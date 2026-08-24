@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Pony 游戏厅',
     description: '七款脑力小游戏，打开就玩。',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Pony 游戏厅：七款脑力小游戏' }],
+    images: [{ url: '/og.jpg', width: 800, height: 420, alt: 'Pony 游戏厅：七款脑力小游戏' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Pony 游戏厅',
     description: '七款脑力小游戏，打开就玩。',
-    images: ['/og.png'],
+    images: ['/og.jpg'],
   },
 };
 
