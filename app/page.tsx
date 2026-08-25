@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { puzzles, type Puzzle } from './puzzles';
 
-type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color';
+type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'rhythm';
 
 const games: Array<{
   id: GameId;
@@ -15,10 +15,11 @@ const games: Array<{
 }> = [
   { id: 'whack', icon: '🐹', title: '打地鼠', description: '眼疾手快，20 秒能打中几只？', tag: '手速', color: 'orange' },
   { id: 'twentyfour', icon: '24', title: '24 点', description: '用四个数字和运算符凑出 24。', tag: '算力', color: 'violet' },
-  { id: 'reaction', icon: '🏃', title: '起跑跨栏', description: '听发令起跑，再点击跳过迎面而来的栏架。', tag: '反应', color: 'green' },
+  { id: 'reaction', icon: '🏁', title: '起跑', description: '听到发令立刻起跑，测测你的反应。', tag: '反应', color: 'green' },
   { id: 'memory', icon: '🧠', title: '记忆翻牌', description: '翻开卡片，找出所有相同图案。', tag: '记忆', color: 'pink' },
   { id: 'order', icon: '↗', title: '数字追踪', description: '从小到大，按顺序点完数字。', tag: '专注', color: 'blue' },
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
+  { id: 'rhythm', icon: '♪', title: '节拍跳跳', description: '跟着节拍前进，一键跳过所有尖刺。', tag: '节奏', color: 'coral' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -300,103 +301,34 @@ function TwentyFourGame() {
   );
 }
 
-type ReactionPhase = 'idle' | 'waiting' | 'go' | 'racing' | 'won' | 'crashed' | 'early';
-const hurdleRaceLength = 31;
-const hurdleSteps = new Set([5, 8, 11, 14, 17, 20, 23, 26, 29]);
-const hurdleStepDuration = 560;
-const hurdleJumpDuration = 760;
-const hurdleJumpPeak = 122;
-
-function hurdleJumpHeight(startedAt: number) {
-  const progress = (performance.now() - startedAt) / hurdleJumpDuration;
-  if (progress <= 0 || progress >= 1) return 0;
-  return 4 * hurdleJumpPeak * progress * (1 - progress);
-}
+type ReactionPhase = 'idle' | 'waiting' | 'go' | 'result' | 'early';
 
 function ReactionGame() {
   const [phase, setPhase] = useState<ReactionPhase>('idle');
   const [result, setResult] = useState<number | null>(null);
   const [best, setBest] = useState<number | null>(null);
-  const [step, setStep] = useState(0);
-  const [cleared, setCleared] = useState(0);
-  const [bestStep, setBestStep] = useState(0);
-  const [jumping, setJumping] = useState(false);
-  const signalTimer = useRef<number | null>(null);
-  const jumpTimer = useRef<number | null>(null);
+  const timer = useRef<number | null>(null);
   const startedAt = useRef(0);
-  const stepRef = useRef(0);
-  const jumpActive = useRef(false);
-  const jumpStartedAt = useRef(0);
-
-  useEffect(() => {
-    if (phase !== 'racing') return;
-    const raceTimer = window.setInterval(() => {
-      const currentStep = stepRef.current;
-      const needsJump = hurdleSteps.has(currentStep);
-      const actualHeight = jumpActive.current ? hurdleJumpHeight(jumpStartedAt.current) : 0;
-
-      if (needsJump && actualHeight < 46) {
-        setBestStep((current) => Math.max(current, currentStep));
-        setPhase('crashed');
-        return;
-      }
-
-      if (needsJump) setCleared((value) => value + 1);
-      if (currentStep >= hurdleRaceLength) {
-        setBestStep(hurdleRaceLength);
-        setPhase('won');
-        return;
-      }
-
-      const next = currentStep + 1;
-      stepRef.current = next;
-      setStep(next);
-    }, hurdleStepDuration);
-    return () => window.clearInterval(raceTimer);
-  }, [phase]);
 
   useEffect(() => () => {
-    if (signalTimer.current !== null) window.clearTimeout(signalTimer.current);
-    if (jumpTimer.current !== null) window.clearTimeout(jumpTimer.current);
+    if (timer.current !== null) window.clearTimeout(timer.current);
   }, []);
 
   function start() {
-    if (signalTimer.current !== null) window.clearTimeout(signalTimer.current);
-    if (jumpTimer.current !== null) window.clearTimeout(jumpTimer.current);
-    signalTimer.current = null;
-    jumpTimer.current = null;
-    stepRef.current = 0;
-    jumpActive.current = false;
-    jumpStartedAt.current = 0;
+    if (timer.current !== null) window.clearTimeout(timer.current);
     setPhase('waiting');
     setResult(null);
-    setStep(0);
-    setCleared(0);
-    setJumping(false);
-    signalTimer.current = window.setTimeout(() => {
+    timer.current = window.setTimeout(() => {
       setPhase('go');
       startedAt.current = performance.now();
-      signalTimer.current = null;
+      timer.current = null;
     }, 1400 + Math.random() * 2800);
-  }
-
-  function jump() {
-    if (jumpActive.current) return;
-    jumpActive.current = true;
-    jumpStartedAt.current = performance.now();
-    setJumping(true);
-    if (jumpTimer.current !== null) window.clearTimeout(jumpTimer.current);
-    jumpTimer.current = window.setTimeout(() => {
-      jumpActive.current = false;
-      setJumping(false);
-      jumpTimer.current = null;
-    }, hurdleJumpDuration);
   }
 
   function press() {
     if (phase === 'waiting') {
-      if (signalTimer.current !== null) window.clearTimeout(signalTimer.current);
-      signalTimer.current = null;
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = null;
       setPhase('early');
       return;
     }
@@ -408,78 +340,39 @@ function ReactionGame() {
       }
       setResult(milliseconds);
       setBest((current) => current === null ? milliseconds : Math.min(current, milliseconds));
-      stepRef.current = 0;
-      setStep(0);
-      setPhase('racing');
-      return;
-    }
-    if (phase === 'racing') {
-      jump();
+      setPhase('result');
       return;
     }
     start();
   }
 
-  const copy = phase === 'racing' ? null : {
+  const copy = {
     idle: ['🏁', '准备起跑', '点击进入起跑器'],
     waiting: ['🏃', '各就位…', '等待发令，现在点击就是抢跑'],
-    go: ['🔫', '起跑！', '点击冲出去'],
-    won: ['🏆', '跨栏通关！', `${result} ms 起跑 · 越过 ${hurdleSteps.size} 个栏架 · 点击再跑`],
-    crashed: ['💥', '撞到栏架了', `跑到 ${step}/${hurdleRaceLength} · 点击重新起跑`],
+    go: ['🔫', '起跑！', '快点'],
+    result: ['🏁', `${result} 毫秒`, '点击再跑一次'],
     early: ['✋', '抢跑了', '等发令后再点击 · 点此重来'],
   }[phase];
 
-  const progress = step / hurdleRaceLength;
-  const rating = phase === 'won'
-    ? result !== null && result <= 220 ? 5 : result !== null && result <= 300 ? 4 : 3
-    : progress >= .75 ? 4 : progress >= .5 ? 3 : progress >= .25 ? 2 : 1;
-
   return (
     <div className="reaction-game">
-      <div className="reaction-meta">
-        <span>最佳起跑 <strong>{best === null ? '—' : `${best} ms`}</strong></span>
-        <span>跨栏 <strong>{cleared}/{hurdleSteps.size}</strong></span>
-        <span>最远 <strong>{bestStep}/{hurdleRaceLength}</strong></span>
-      </div>
-      <button
-        type="button"
-        className={`reaction-pad phase-${phase}`}
-        onPointerDown={press}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            press();
-          }
-        }}
-        aria-label={phase === 'racing' ? '点击跳过栏架' : '点击进行起跑挑战'}
-      >
+      <div className="reaction-meta"><span>最佳起跑：{best === null ? '—' : `${best} ms`}</span><span>100 ms 以下按抢跑处理</span></div>
+      <button type="button" className={`reaction-pad phase-${phase}`} onPointerDown={press}>
         <span className="race-scenery" aria-hidden="true">
           <span className="race-sun" />
           <span className="race-cloud cloud-one" />
           <span className="race-cloud cloud-two" />
           <span className="race-grandstand" />
-          <span className="race-track" />
-          <span className="hurdle-course" style={{ transform: `translateX(${112 - step * 92}px)` }}>
-            <span className="race-start-line" />
-            {Array.from({ length: hurdleRaceLength + 1 }, (_, index) => (
-              hurdleSteps.has(index) ? <span className="race-hurdle" style={{ left: `${index * 92}px` }} key={index} /> : null
-            ))}
-            <span className="race-finish-line" style={{ left: `${hurdleRaceLength * 92}px` }}>FINISH</span>
-          </span>
-          <span className={`race-runner ${jumping ? 'is-jumping' : ''} ${phase === 'crashed' ? 'is-crashed' : ''}`}>🏃</span>
+          <span className="race-track"><span className="race-start-line" /></span>
+          <span className="race-runner">🏃</span>
         </span>
-        {phase === 'racing' ? (
-          <span className="race-hud"><strong>{result} ms 起跑</strong><small>点击 · 跨栏</small><i style={{ width: `${Math.min(100, progress * 100)}%` }} /></span>
-        ) : copy ? (
-          <span className="reaction-copy">
-            <span className="reaction-icon">{copy[0]}</span>
-            <strong>{copy[1]}</strong>
-            <small>{copy[2]}</small>
-          </span>
-        ) : null}
+        <span className="reaction-copy">
+          <span className="reaction-icon">{copy[0]}</span>
+          <strong>{copy[1]}</strong>
+          <small>{copy[2]}</small>
+        </span>
       </button>
-      <p className="reaction-instruction">先等发令并点击起跑；跑动后，每点一下跳过一个栏架。</p>
-      {(phase === 'won' || phase === 'crashed') && <StarRating value={rating} label="跨栏评分" />}
+      {phase === 'result' && result !== null && <StarRating value={result <= 180 ? 5 : result <= 220 ? 4 : result <= 280 ? 3 : result <= 350 ? 2 : 1} />}
     </div>
   );
 }
@@ -952,7 +845,8 @@ function ActiveGame({ id }: { id: GameId }) {
   if (id === 'reaction') return <ReactionGame />;
   if (id === 'memory') return <MemoryGame />;
   if (id === 'order') return <OrderGame />;
-  return <ColorGame />;
+  if (id === 'color') return <ColorGame />;
+  return <RhythmJumpGame />;
 }
 
 export default function Home() {
@@ -981,7 +875,7 @@ export default function Home() {
         <div className="hero-copy">
           <span className="eyebrow">MINI GAME CLUB</span>
           <h1>今天想挑战<br /><em>哪一种能力？</em></h1>
-          <p>六款轻量小游戏，练手速、算力、记忆、专注与反应。无需登录，点开就玩。</p>
+          <p>七款轻量小游戏，练手速、算力、记忆、专注与节奏。无需登录，点开就玩。</p>
         </div>
         <div className="hero-orbit" aria-hidden="true">
           <span className="orbit-center">PLAY</span><span className="orbit-dot dot-one">24</span><span className="orbit-dot dot-two">🏁</span><span className="orbit-dot dot-three">🐹</span>
@@ -990,7 +884,7 @@ export default function Home() {
 
       <section className="game-section" aria-labelledby="game-list-title">
         <div className="section-heading">
-          <div><span className="eyebrow">6 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
+          <div><span className="eyebrow">7 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
           <p>每局不到一分钟，随时刷新你的最好成绩。</p>
         </div>
         <div className="game-grid">
