@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://pony-game-arcade.ma-wenqi-paul.chatgpt.site'),
   title: 'Pony 游戏厅｜八款脑力小游戏',
-  description: '八款打开就玩的轻量小游戏：打地鼠、24 点、起跑跨栏、记忆翻牌、数字追踪、颜色迷阵、迷宫探险和时间感应。',
+  description: '八款打开就玩的轻量小游戏：打地鼠、24 点、闪电反应、记忆翻牌、数字追踪、颜色迷阵、迷宫探险和时间感应。',
   openGraph: {
     title: 'Pony 游戏厅',
     description: '八款脑力小游戏，无需登录，打开就玩。',

@@ -15,7 +15,7 @@ const games: Array<{
 }> = [
   { id: 'whack', icon: '🐹', title: '打地鼠', description: '眼疾手快，20 秒能打中几只？', tag: '手速', color: 'orange' },
   { id: 'twentyfour', icon: '24', title: '24 点', description: '用四个数字和运算符凑出 24。', tag: '算力', color: 'violet' },
-  { id: 'reaction', icon: '🏃', title: '起跑跨栏', description: '听发令起跑，再点击跳过栏架和水坑。', tag: '反应', color: 'green' },
+  { id: 'reaction', icon: '⚡', title: '闪电反应', description: '等待随机信号，看到提示后立刻点击。', tag: '反应', color: 'green' },
   { id: 'memory', icon: '🧠', title: '记忆翻牌', description: '翻开卡片，找出所有相同图案。', tag: '记忆', color: 'pink' },
   { id: 'order', icon: '↗', title: '数字追踪', description: '从小到大，按顺序点完数字。', tag: '专注', color: 'blue' },
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
@@ -610,6 +610,101 @@ function ReactionGame() {
       </button>
       <p className="reaction-instruction">你和对手都会失误；撞栏减速两拍，入水减速三拍，冲线后停下。</p>
       {phase === 'won' && <StarRating value={rating} label="跨栏评分" />}
+    </div>
+  );
+}
+
+type FlashReactionPhase = 'idle' | 'waiting' | 'go' | 'result' | 'early';
+
+function FlashReactionGame() {
+  const [phase, setPhase] = useState<FlashReactionPhase>('idle');
+  const [result, setResult] = useState<number | null>(null);
+  const [best, setBest] = useState<number | null>(null);
+  const timer = useRef<number | null>(null);
+  const signalAt = useRef(0);
+
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
+
+  function start() {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    setPhase('waiting');
+    setResult(null);
+    timer.current = window.setTimeout(() => {
+      setPhase('go');
+      signalAt.current = performance.now();
+      timer.current = null;
+    }, 1400 + Math.random() * 2800);
+  }
+
+  function press() {
+    if (phase === 'waiting') {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = null;
+      setPhase('early');
+      return;
+    }
+
+    if (phase === 'go') {
+      const milliseconds = Math.round(performance.now() - signalAt.current);
+      if (milliseconds < 100) {
+        setPhase('early');
+        return;
+      }
+      setResult(milliseconds);
+      setBest((current) => current === null ? milliseconds : Math.min(current, milliseconds));
+      setPhase('result');
+      return;
+    }
+
+    start();
+  }
+
+  const copy = {
+    idle: ['⚡', '准备反应', '点击开始，等待闪电信号'],
+    waiting: ['👀', '集中注意…', '等“现在点击”出现，提前点击算抢跑'],
+    go: ['⚡', '现在点击！', '快！'],
+    result: ['🏁', `${result} 毫秒`, '点击再挑战一次'],
+    early: ['✋', '抢跑了', '等信号出现后再点击 · 点此重来'],
+  }[phase];
+
+  const rating = result === null ? 1 : result <= 180 ? 5 : result <= 220 ? 4 : result <= 280 ? 3 : result <= 350 ? 2 : 1;
+
+  return (
+    <div className="reaction-game">
+      <div className="reaction-meta">
+        <span>最佳反应 <strong>{best === null ? '—' : `${best} ms`}</strong></span>
+        <span>100 ms 以下按抢跑处理</span>
+      </div>
+      <button
+        type="button"
+        className={`reaction-pad phase-${phase}`}
+        onPointerDown={press}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            press();
+          }
+        }}
+        aria-label={phase === 'waiting' ? '等待闪电信号' : phase === 'go' ? '信号已出现，立即点击' : '开始闪电反应挑战'}
+      >
+        <span className="race-scenery" aria-hidden="true">
+          <span className="race-sun" />
+          <span className="race-cloud cloud-one" />
+          <span className="race-cloud cloud-two" />
+          <span className="race-grandstand" />
+          <span className="race-track"><span className="race-start-line" /></span>
+          <span className="race-runner">🏃</span>
+        </span>
+        <span className="reaction-copy">
+          <span className="reaction-icon">{copy[0]}</span>
+          <strong>{copy[1]}</strong>
+          <small>{copy[2]}</small>
+        </span>
+      </button>
+      <p className="reaction-instruction">等待信号出现后立刻点击；提前点击会判定抢跑。</p>
+      {phase === 'result' && result !== null && <StarRating value={rating} label="反应评分" />}
     </div>
   );
 }
@@ -1420,7 +1515,7 @@ function RhythmJumpGame() {
 function ActiveGame({ id }: { id: GameId }) {
   if (id === 'whack') return <WhackGame />;
   if (id === 'twentyfour') return <TwentyFourGame />;
-  if (id === 'reaction') return <ReactionGame />;
+  if (id === 'reaction') return <FlashReactionGame />;
   if (id === 'memory') return <MemoryGame />;
   if (id === 'order') return <OrderGame />;
   if (id === 'color') return <ColorGame />;
