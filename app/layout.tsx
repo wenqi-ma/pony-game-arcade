@@ -13,18 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('http://localhost:3000'),
-  title: 'Pony 游戏厅｜六款脑力小游戏',
-  description: '六款打开就玩的轻量小游戏：打地鼠、24 点、起跑跨栏、记忆翻牌、数字追踪和颜色迷阵。',
+  metadataBase: new URL('https://pony-game-arcade.ma-wenqi-paul.chatgpt.site'),
+  title: 'Pony 游戏厅｜八款脑力小游戏',
+  description: '八款打开就玩的轻量小游戏：打地鼠、24 点、起跑跨栏、记忆翻牌、数字追踪、颜色迷阵、迷宫探险和时间感应。',
   openGraph: {
     title: 'Pony 游戏厅',
-    description: '六款脑力小游戏，打开就玩。',
-    images: [{ url: '/og.jpg', width: 800, height: 420, alt: 'Pony 游戏厅：六款脑力小游戏' }],
+    description: '八款脑力小游戏，无需登录，打开就玩。',
+    images: [{ url: '/og.jpg', width: 800, height: 420, alt: 'Pony 游戏厅：八款脑力小游戏' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Pony 游戏厅',
-    description: '六款脑力小游戏，打开就玩。',
+    description: '八款脑力小游戏，无需登录，打开就玩。',
     images: ['/og.jpg'],
   },
 };
