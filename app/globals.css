@@ -200,6 +200,7 @@ button { font: inherit; }
 .tone-blue { background: #8fd8ff; }
 .tone-yellow { background: #f3e269; }
 .tone-coral { background: #ff8176; }
+.tone-mint { background: #93e5d2; }
 
 .card-number { font-size: 12px; font-weight: 900; }
 .game-icon { justify-self: end; align-self: center; font: 700 68px/1 Georgia, serif; letter-spacing: -.08em; transition: transform .2s ease; }
@@ -312,7 +313,8 @@ footer {
 .memory-game,
 .order-game,
 .color-game,
-.maze-game {
+.maze-game,
+.timing-game {
   position: relative;
   min-height: 520px;
   padding: 28px;
@@ -536,6 +538,41 @@ footer {
 .choice-orange { background: #e87827; }
 .choice-pink { background: #e85591; }
 
+.timing-game { overflow: hidden; background: #bcefe2; }
+.timing-target-row { display: flex; align-items: center; gap: 12px; margin: -4px 0 18px; }
+.timing-target-row > span { color: #355f58; font-size: 12px; font-weight: 900; white-space: nowrap; }
+.timing-target-picker { width: min(390px, 100%); margin: 0; background: rgba(18,58,55,.09); }
+.timing-target-picker button:disabled { cursor: not-allowed; opacity: .45; }
+.timing-stage {
+  position: relative;
+  display: flex;
+  min-height: 330px;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid #123a37;
+  border-radius: 22px;
+  background: #123a37;
+  color: white;
+  cursor: pointer;
+  box-shadow: 6px 6px 0 #41746b;
+  touch-action: manipulation;
+}
+.timing-stage::before { content: ""; position: absolute; width: 238px; height: 238px; border: 2px solid rgba(188,239,226,.28); border-radius: 50%; box-shadow: 0 0 0 28px rgba(188,239,226,.05), 0 0 0 57px rgba(188,239,226,.035); }
+.timing-stage.phase-running::before { border-color: #c9f44f; animation: timing-pulse 1s ease-in-out infinite; }
+.timing-stage.phase-result { background: #274b73; }
+.timing-stage:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 #41746b; }
+.timing-stage > span,
+.timing-stage > strong,
+.timing-stage > small { position: relative; z-index: 1; }
+.timing-stage > span { color: #bcefe2; font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+.timing-stage > strong { margin: 17px 0 10px; font: 700 clamp(68px, 16vw, 108px)/1 Georgia, serif; letter-spacing: -.06em; }
+.timing-stage > small { min-height: 20px; margin: 0; color: #e9ff9f; font-weight: 900; }
+.timing-instruction { margin: 18px auto 0; max-width: 480px; color: #355f58; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.6; }
+.timing-game > .star-rating { margin: 14px auto 0; }
+
 .maze-game { overflow: hidden; background: #ffb0a8; }
 .maze-frame { display: grid; place-items: center; }
 .maze-board {
@@ -676,6 +713,7 @@ footer {
 @keyframes rhythm-crash { to { transform: translateX(-50%) rotate(72deg) translateY(13px); opacity: .65; } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-7px); } 70% { transform: translateX(7px); } }
 @keyframes correct-pop { 0% { transform: scale(.88); } 65% { transform: scale(1.07); } 100% { transform: scale(1); } }
+@keyframes timing-pulse { 0%, 100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.06); opacity: 1; } }
 @keyframes maze-bump { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-7px); } 70% { transform: translateX(5px); } }
 @keyframes maze-pony { from { transform: translateY(1px) rotate(-4deg); } to { transform: translateY(-2px) rotate(4deg); } }
 
@@ -705,7 +743,8 @@ footer {
   .memory-game,
   .order-game,
   .color-game,
-  .maze-game { min-height: calc(100vh - 85px); padding: 18px; }
+  .maze-game,
+  .timing-game { min-height: calc(100vh - 85px); padding: 18px; }
   .reaction-pad { min-height: calc(100vh - 190px); }
   .reaction-meta { flex-direction: column; gap: 3px; }
   .memory-board,
@@ -716,6 +755,8 @@ footer {
   .puzzle-level-row { align-items: stretch; flex-wrap: wrap; }
   .puzzle-level-row > span { align-self: center; }
   .puzzle-level-picker { order: 3; width: 100%; }
+  .timing-target-row { align-items: stretch; flex-direction: column; }
+  .timing-target-picker { width: 100%; }
   .color-choices.choices-4 { grid-template-columns: repeat(2, 1fr); }
   .color-choices.choices-6 { grid-template-columns: repeat(3, 1fr); }
   .color-choices.choices-8 { grid-template-columns: repeat(4, 1fr); }

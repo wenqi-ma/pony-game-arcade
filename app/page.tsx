@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { puzzles, type Puzzle } from './puzzles';
 
-type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'maze';
+type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'maze' | 'timing';
 
 const games: Array<{
   id: GameId;
@@ -20,6 +20,7 @@ const games: Array<{
   { id: 'order', icon: '↗', title: '数字追踪', description: '从小到大，按顺序点完数字。', tag: '专注', color: 'blue' },
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
   { id: 'maze', icon: '🧩', title: '迷宫探险', description: '找到正确路线，少走弯路冲向终点。', tag: '空间', color: 'coral' },
+  { id: 'timing', icon: '⏱', title: '时间感应', description: '选择 3—7 秒，凭感觉在指定时刻按停。', tag: '感觉', color: 'mint' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -862,6 +863,92 @@ function ColorGame() {
   );
 }
 
+type TimingTarget = 3 | 4 | 5 | 6 | 7;
+type TimingPhase = 'idle' | 'running' | 'result';
+const timingTargets: TimingTarget[] = [3, 4, 5, 6, 7];
+
+function TimingGame() {
+  const [selectedTarget, setSelectedTarget] = useState<TimingTarget>(5);
+  const [playedTarget, setPlayedTarget] = useState<TimingTarget>(5);
+  const [phase, setPhase] = useState<TimingPhase>('idle');
+  const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState<number | null>(null);
+  const [bestByTarget, setBestByTarget] = useState<Record<TimingTarget, number | null>>({ 3: null, 4: null, 5: null, 6: null, 7: null });
+  const startedAt = useRef(0);
+
+  useEffect(() => {
+    if (phase !== 'running') return;
+    const timer = window.setInterval(() => {
+      setElapsed((performance.now() - startedAt.current) / 1000);
+    }, 30);
+    return () => window.clearInterval(timer);
+  }, [phase]);
+
+  function selectTarget(target: TimingTarget) {
+    if (phase === 'running') return;
+    setSelectedTarget(target);
+    setPlayedTarget(target);
+    setElapsed(0);
+    setError(null);
+    setPhase('idle');
+  }
+
+  function start() {
+    setPlayedTarget(selectedTarget);
+    setElapsed(0);
+    setError(null);
+    startedAt.current = performance.now();
+    setPhase('running');
+  }
+
+  function stop() {
+    const result = (performance.now() - startedAt.current) / 1000;
+    const nextError = Math.abs(result - playedTarget);
+    setElapsed(result);
+    setError(nextError);
+    setBestByTarget((current) => ({
+      ...current,
+      [playedTarget]: current[playedTarget] === null ? nextError : Math.min(current[playedTarget] ?? nextError, nextError),
+    }));
+    setPhase('result');
+  }
+
+  const best = bestByTarget[playedTarget];
+  const rating = error === null ? 1 : error <= .1 ? 5 : error <= .25 ? 4 : error <= .5 ? 3 : error <= .8 ? 2 : 1;
+  const resultDirection = elapsed < playedTarget ? '早了' : elapsed > playedTarget ? '晚了' : '正好';
+  const display = phase === 'idle'
+    ? `${selectedTarget}.00`
+    : phase === 'running'
+      ? elapsed < 1 ? elapsed.toFixed(2) : '•••'
+      : elapsed.toFixed(3);
+
+  return (
+    <div className="timing-game">
+      <div className="game-stats">
+        <span>目标 <strong>{playedTarget}s</strong></span>
+        <span>按停 <strong>{phase === 'result' ? `${elapsed.toFixed(3)}s` : '—'}</strong></span>
+        <span>误差 <strong>{error === null ? '—' : `${error.toFixed(3)}s`}</strong></span>
+        <span>最佳 <strong>{best === null ? '—' : `${best.toFixed(3)}s`}</strong></span>
+      </div>
+      <div className="timing-target-row">
+        <span>指定秒数</span>
+        <div className="difficulty-picker timing-target-picker" role="group" aria-label="选择时间感应目标秒数">
+          {timingTargets.map((target) => (
+            <button type="button" key={target} disabled={phase === 'running'} aria-pressed={selectedTarget === target} onClick={() => selectTarget(target)}>{target} 秒</button>
+          ))}
+        </div>
+      </div>
+      <button type="button" className={`timing-stage phase-${phase}`} onClick={phase === 'running' ? stop : start} aria-label={phase === 'running' ? '按停计时' : `开始 ${selectedTarget} 秒时间感应挑战`}>
+        <span>目标 {playedTarget}.00 秒</span>
+        <strong>{display}</strong>
+        <small>{phase === 'idle' ? '点击开始' : phase === 'running' ? elapsed < 1 ? '记住节奏，数字马上隐藏' : '凭感觉，再点击按停' : `${resultDirection} ${error?.toFixed(3)} 秒 · 点击再来`}</small>
+      </button>
+      <p className="timing-instruction">开始后只显示第 1 秒，之后隐藏计时；感觉到达目标秒数时立即按停。</p>
+      {phase === 'result' && <StarRating value={rating} label={`${playedTarget} 秒评分`} />}
+    </div>
+  );
+}
+
 type MazeSize = 11 | 13 | 19;
 type MazeWall = 'top' | 'right' | 'bottom' | 'left';
 type MazeDirectionKey = 'up' | 'right' | 'down' | 'left';
@@ -1337,7 +1424,8 @@ function ActiveGame({ id }: { id: GameId }) {
   if (id === 'memory') return <MemoryGame />;
   if (id === 'order') return <OrderGame />;
   if (id === 'color') return <ColorGame />;
-  return <MazeGame />;
+  if (id === 'maze') return <MazeGame />;
+  return <TimingGame />;
 }
 
 export default function Home() {
@@ -1366,7 +1454,7 @@ export default function Home() {
         <div className="hero-copy">
           <span className="eyebrow">MINI GAME CLUB</span>
           <h1>今天想挑战<br /><em>哪一种能力？</em></h1>
-          <p>七款轻量小游戏，练手速、算力、记忆、专注、空间与反应。无需登录，点开就玩。</p>
+          <p>八款轻量小游戏，练手速、算力、记忆、专注、空间、时间感与反应。无需登录，点开就玩。</p>
         </div>
         <div className="hero-orbit" aria-hidden="true">
           <span className="orbit-center">PLAY</span><span className="orbit-dot dot-one">24</span><span className="orbit-dot dot-two">🏁</span><span className="orbit-dot dot-three">🐹</span>
@@ -1375,7 +1463,7 @@ export default function Home() {
 
       <section className="game-section" aria-labelledby="game-list-title">
         <div className="section-heading">
-          <div><span className="eyebrow">7 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
+          <div><span className="eyebrow">8 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
           <p>每局不到一分钟，随时刷新你的最好成绩。</p>
         </div>
         <div className="game-grid">
