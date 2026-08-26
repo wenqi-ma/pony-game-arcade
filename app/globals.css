@@ -311,7 +311,8 @@ footer {
 .reaction-game,
 .memory-game,
 .order-game,
-.color-game {
+.color-game,
+.maze-game {
   position: relative;
   min-height: 520px;
   padding: 28px;
@@ -413,12 +414,28 @@ footer {
 .race-hurdle { position: absolute; bottom: 62px; width: 44px; height: 53px; border-top: 7px solid #fff; filter: drop-shadow(3px 4px 0 rgba(70,27,20,.22)); transform: translateX(-50%); }
 .race-hurdle::before { content: ""; position: absolute; left: 2px; right: 2px; top: 5px; height: 8px; border-radius: 2px; background: repeating-linear-gradient(90deg, #fff 0 9px, #ef594d 9px 18px); }
 .race-hurdle::after { content: ""; position: absolute; left: 5px; top: 8px; width: 4px; height: 46px; background: #f7f2df; box-shadow: 30px 0 0 #f7f2df; }
+.race-hurdle-opponent { bottom: 117px; z-index: -1; opacity: .82; transform: translateX(-50%) scale(.72); transform-origin: bottom center; }
+.race-water { position: absolute; bottom: 21px; width: 76px; height: 29px; overflow: hidden; border: 3px solid rgba(63,42,30,.45); border-radius: 50%; background: radial-gradient(ellipse at 35% 35%, rgba(255,255,255,.85) 0 5%, transparent 6%), repeating-radial-gradient(ellipse at center, #a9edff 0 7px, #3aafd4 8px 13px); box-shadow: inset 0 -7px 0 rgba(17,102,145,.24), 0 3px 0 rgba(70,27,20,.18); transform: translateX(-50%); }
+.race-water::after { content: ""; position: absolute; left: 13px; right: 13px; top: 7px; height: 5px; border-top: 2px solid rgba(255,255,255,.8); border-bottom: 2px solid rgba(255,255,255,.42); border-radius: 50%; }
+.race-water-opponent { bottom: 76px; opacity: .82; transform: translateX(-50%) scale(.72); transform-origin: center; }
+.race-opponent { position: absolute; z-index: 2; bottom: 111px; font-size: 48px; line-height: 1; filter: drop-shadow(3px 4px 0 rgba(24,32,25,.16)); transform: translateX(-50%) scaleX(-1); transition: left .52s linear; }
+.race-opponent i { position: absolute; top: -19px; left: 50%; border-radius: 999px; background: #5543c5; color: white; padding: 3px 7px; font: normal 900 9px/1 var(--font-geist-sans), sans-serif; transform: translateX(-50%) scaleX(-1); }
+.race-opponent.is-running { animation: opponent-sprint .18s linear infinite alternate; }
+.race-opponent.is-jumping { animation: opponent-jump .76s linear; }
+.race-opponent.is-slowed { animation: opponent-stumble .34s ease-in-out infinite alternate; filter: saturate(.65) drop-shadow(3px 4px 0 rgba(24,32,25,.2)); }
+.race-opponent.is-finished { animation: none; transform: translateX(-50%) scaleX(-1); }
+.race-opponent-splash { position: absolute; z-index: 4; bottom: 104px; font-size: 44px; opacity: 0; pointer-events: none; transform: translateX(-50%) scale(.3); transition: left .52s linear; }
+.race-opponent-splash.is-visible { animation: splash-pop .56s ease-out forwards; }
 .race-runner { position: absolute; z-index: 3; left: 120px; bottom: 60px; font-size: 62px; line-height: 1; filter: drop-shadow(4px 5px 0 rgba(24,32,25,.2)); transform: translateX(-50%) scaleX(-1); }
 .phase-waiting .race-runner { animation: runner-ready .65s ease-in-out infinite; }
 .phase-go .race-runner { animation: runner-ready .28s ease-in-out infinite; }
 .phase-racing .race-runner { animation: runner-sprint .16s linear infinite alternate; }
 .phase-racing .race-runner.is-jumping { animation: hurdle-jump .76s linear; }
+.phase-racing .race-runner.is-slowed { animation: runner-stumble .34s ease-in-out infinite alternate; filter: saturate(.65) drop-shadow(4px 5px 0 rgba(24,32,25,.2)); }
 .race-runner.is-crashed { animation: hurdle-crash .42s ease forwards; }
+.race-runner.is-splashed { animation: runner-splash .48s ease-in forwards; }
+.race-splash { position: absolute; z-index: 4; left: 120px; bottom: 48px; font-size: 58px; opacity: 0; pointer-events: none; transform: translateX(-50%) scale(.3); }
+.race-splash.is-visible { animation: splash-pop .56s ease-out forwards; }
 .phase-won .race-runner { animation: runner-win .55s ease forwards; }
 .phase-early .race-runner { transform: translateX(-50%) rotate(-18deg) scaleX(-1); }
 .phase-waiting .race-scenery { filter: saturate(.76) brightness(.9); }
@@ -435,6 +452,10 @@ footer {
 .race-hud { position: absolute; z-index: 5; top: 18px; left: 18px; right: 18px; display: grid; grid-template-columns: 1fr auto; align-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,.35); border-radius: 13px; background: rgba(24,32,25,.8); padding: 12px 15px 15px; text-align: left; backdrop-filter: blur(8px); }
 .race-hud strong { font: 800 17px/1.2 var(--font-geist-sans), sans-serif; }
 .race-hud small { margin: 0; color: #e8ff8a; font-weight: 900; }
+.race-hud.is-slowed { background: rgba(134,66,13,.88); }
+.race-hud.is-slowed small { color: #fff2a3; }
+.race-hud.is-water { background: rgba(18,91,132,.9); }
+.race-hud.is-water small { color: #c8f4ff; }
 .race-hud i { position: absolute; left: 0; bottom: 0; height: 4px; border-radius: 0 999px 999px 0; background: #c9f44f; transition: width .52s linear; }
 .reaction-instruction { margin: 17px 0 0; color: #43624b; text-align: center; font-size: 13px; font-weight: 800; }
 .reaction-game > .star-rating { margin: 14px auto 0; }
@@ -515,6 +536,47 @@ footer {
 .choice-orange { background: #e87827; }
 .choice-pink { background: #e85591; }
 
+.maze-game { overflow: hidden; background: #ffb0a8; }
+.maze-frame { display: grid; place-items: center; }
+.maze-board {
+  display: grid;
+  width: min(430px, 100%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #fff8ea;
+  outline: 0;
+  box-shadow: 7px 7px 0 rgba(87,38,34,.24);
+}
+.maze-board:focus-visible { outline: 4px solid #7442bb; outline-offset: 5px; }
+.maze-board.is-blocked { animation: maze-bump .18s ease; }
+.maze-cell { position: relative; display: grid; min-width: 0; place-items: center; background: rgba(255,255,255,.48); }
+.maze-cell.wall-top { border-top: 2px solid #293b2e; }
+.maze-cell.wall-right { border-right: 2px solid #293b2e; }
+.maze-cell.wall-bottom { border-bottom: 2px solid #293b2e; }
+.maze-cell.wall-left { border-left: 2px solid #293b2e; }
+.maze-cell.is-visited { background: #e9f6bb; }
+.maze-cell.is-start::after { content: "起"; position: absolute; left: 3px; top: 2px; color: #607044; font-size: 8px; font-weight: 900; }
+.maze-cell.is-goal { background: #ffd85d; }
+.maze-cell b,
+.maze-cell i { position: relative; z-index: 2; font-size: clamp(18px, 4.4vw, 29px); font-style: normal; line-height: 1; }
+.maze-board.size-13 .maze-cell b,
+.maze-board.size-13 .maze-cell i { font-size: clamp(16px, 3.5vw, 24px); }
+.maze-board.size-19 .maze-cell b,
+.maze-board.size-19 .maze-cell i { font-size: clamp(12px, 2.5vw, 18px); }
+.maze-board.size-19 .maze-cell.is-start::after { display: none; }
+.maze-cell b { animation: maze-pony .42s ease-in-out infinite alternate; }
+.maze-controls { display: grid; width: 158px; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 38px); justify-content: center; gap: 4px; margin: 17px auto 0; }
+.maze-controls button { border: 1px solid #54332f; border-radius: 10px; background: #fff8ea; color: #54332f; cursor: pointer; font-size: 22px; font-weight: 900; box-shadow: 2px 2px 0 #54332f; touch-action: manipulation; }
+.maze-controls button:active { transform: translate(2px, 2px); box-shadow: none; }
+.maze-controls > span { display: grid; grid-column: 2; grid-row: 2; place-items: center; font-size: 22px; }
+.maze-up { grid-column: 2; grid-row: 1; }
+.maze-left { grid-column: 1; grid-row: 2; }
+.maze-right { grid-column: 3; grid-row: 2; }
+.maze-down { grid-column: 2; grid-row: 3; }
+.maze-instruction { margin: 7px 0 0; color: #714a45; text-align: center; font-size: 12px; font-weight: 800; }
+.maze-callout { z-index: 6; background: rgba(255,239,226,.88); }
+.maze-callout .difficulty-picker { width: min(390px, 100%); }
+
 .rhythm-game { overflow: hidden; background: #b9a8ff; }
 .rhythm-map-row { display: flex; align-items: center; gap: 12px; margin: -4px 0 14px; }
 .rhythm-map-row > span { color: #4b406e; font-size: 12px; font-weight: 900; white-space: nowrap; }
@@ -575,17 +637,28 @@ footer {
 @keyframes runner-sprint { from { transform: translateX(-50%) rotate(-3deg) translateY(0) scaleX(-1); } to { transform: translateX(-50%) rotate(-3deg) translateY(-4px) scaleX(-1); } }
 @keyframes hurdle-jump {
   0%, 100% { transform: translateX(-50%) translateY(0) rotate(0) scaleX(-1); }
-  10% { transform: translateX(-50%) translateY(-44px) rotate(-3deg) scaleX(-1); }
-  20% { transform: translateX(-50%) translateY(-78px) rotate(-5deg) scaleX(-1); }
-  30% { transform: translateX(-50%) translateY(-102px) rotate(-7deg) scaleX(-1); }
-  40% { transform: translateX(-50%) translateY(-117px) rotate(-8deg) scaleX(-1); }
-  50% { transform: translateX(-50%) translateY(-122px) rotate(-9deg) scaleX(-1); }
-  60% { transform: translateX(-50%) translateY(-117px) rotate(-8deg) scaleX(-1); }
-  70% { transform: translateX(-50%) translateY(-102px) rotate(-7deg) scaleX(-1); }
-  80% { transform: translateX(-50%) translateY(-78px) rotate(-5deg) scaleX(-1); }
-  90% { transform: translateX(-50%) translateY(-44px) rotate(-3deg) scaleX(-1); }
+  10% { transform: translateX(calc(-50% + 8px)) translateY(-44px) rotate(-3deg) scaleX(-1); }
+  20% { transform: translateX(calc(-50% + 18px)) translateY(-78px) rotate(-5deg) scaleX(-1); }
+  30% { transform: translateX(calc(-50% + 29px)) translateY(-102px) rotate(-7deg) scaleX(-1); }
+  40% { transform: translateX(calc(-50% + 39px)) translateY(-117px) rotate(-8deg) scaleX(-1); }
+  50% { transform: translateX(calc(-50% + 48px)) translateY(-122px) rotate(-9deg) scaleX(-1); }
+  60% { transform: translateX(calc(-50% + 55px)) translateY(-117px) rotate(-8deg) scaleX(-1); }
+  70% { transform: translateX(calc(-50% + 58px)) translateY(-102px) rotate(-7deg) scaleX(-1); }
+  80% { transform: translateX(calc(-50% + 48px)) translateY(-78px) rotate(-5deg) scaleX(-1); }
+  90% { transform: translateX(calc(-50% + 27px)) translateY(-44px) rotate(-3deg) scaleX(-1); }
+}
+@keyframes opponent-sprint { from { transform: translateX(-50%) rotate(2deg) translateY(0) scaleX(-1); } to { transform: translateX(-50%) rotate(2deg) translateY(-3px) scaleX(-1); } }
+@keyframes runner-stumble { from { transform: translateX(-50%) rotate(-13deg) translateY(4px) scaleX(-1); } to { transform: translateX(calc(-50% + 11px)) rotate(10deg) translateY(7px) scaleX(-1); } }
+@keyframes opponent-stumble { from { transform: translateX(-50%) rotate(-11deg) translateY(3px) scaleX(-1); } to { transform: translateX(calc(-50% + 8px)) rotate(8deg) translateY(5px) scaleX(-1); } }
+@keyframes opponent-jump {
+  0%, 100% { transform: translateX(-50%) translateY(0) scale(.78) scaleX(-1); }
+  25% { transform: translateX(calc(-50% + 18px)) translateY(-60px) scale(.78) scaleX(-1); }
+  50% { transform: translateX(calc(-50% + 36px)) translateY(-86px) rotate(-7deg) scale(.78) scaleX(-1); }
+  75% { transform: translateX(calc(-50% + 42px)) translateY(-58px) scale(.78) scaleX(-1); }
 }
 @keyframes hurdle-crash { to { transform: translateX(-50%) translateY(18px) rotate(58deg) scaleX(-1); opacity: .72; } }
+@keyframes runner-splash { to { transform: translateX(-20%) translateY(49px) rotate(22deg) scaleX(-1) scale(.7); opacity: .22; } }
+@keyframes splash-pop { 0% { opacity: 0; transform: translateX(-50%) scale(.3); } 45% { opacity: 1; transform: translateX(-50%) translateY(-34px) scale(1.18); } 100% { opacity: .75; transform: translateX(-50%) translateY(-12px) scale(.86); } }
 @keyframes runner-win { to { transform: translateX(390%) rotate(-4deg) scaleX(-1); opacity: 0; } }
 @keyframes rhythm-ready { 0%, 100% { transform: translateX(-50%) scale(1, .94); } 50% { transform: translateX(-50%) scale(1.04, 1); } }
 @keyframes rhythm-jump {
@@ -603,6 +676,8 @@ footer {
 @keyframes rhythm-crash { to { transform: translateX(-50%) rotate(72deg) translateY(13px); opacity: .65; } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-7px); } 70% { transform: translateX(7px); } }
 @keyframes correct-pop { 0% { transform: scale(.88); } 65% { transform: scale(1.07); } 100% { transform: scale(1); } }
+@keyframes maze-bump { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-7px); } 70% { transform: translateX(5px); } }
+@keyframes maze-pony { from { transform: translateY(1px) rotate(-4deg); } to { transform: translateY(-2px) rotate(4deg); } }
 
 @media (max-width: 850px) {
   .hero { min-height: 600px; grid-template-columns: 1fr; padding: 80px 0; }
@@ -629,7 +704,8 @@ footer {
   .reaction-game,
   .memory-game,
   .order-game,
-  .color-game { min-height: calc(100vh - 85px); padding: 18px; }
+  .color-game,
+  .maze-game { min-height: calc(100vh - 85px); padding: 18px; }
   .reaction-pad { min-height: calc(100vh - 190px); }
   .reaction-meta { flex-direction: column; gap: 3px; }
   .memory-board,

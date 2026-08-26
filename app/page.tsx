@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { puzzles, type Puzzle } from './puzzles';
 
-type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color';
+type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'maze';
 
 const games: Array<{
   id: GameId;
@@ -15,10 +15,11 @@ const games: Array<{
 }> = [
   { id: 'whack', icon: '🐹', title: '打地鼠', description: '眼疾手快，20 秒能打中几只？', tag: '手速', color: 'orange' },
   { id: 'twentyfour', icon: '24', title: '24 点', description: '用四个数字和运算符凑出 24。', tag: '算力', color: 'violet' },
-  { id: 'reaction', icon: '🏃', title: '起跑跨栏', description: '听发令起跑，再点击跳过迎面而来的栏架。', tag: '反应', color: 'green' },
+  { id: 'reaction', icon: '🏃', title: '起跑跨栏', description: '听发令起跑，再点击跳过栏架和水坑。', tag: '反应', color: 'green' },
   { id: 'memory', icon: '🧠', title: '记忆翻牌', description: '翻开卡片，找出所有相同图案。', tag: '记忆', color: 'pink' },
   { id: 'order', icon: '↗', title: '数字追踪', description: '从小到大，按顺序点完数字。', tag: '专注', color: 'blue' },
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
+  { id: 'maze', icon: '🧩', title: '迷宫探险', description: '找到正确路线，少走弯路冲向终点。', tag: '空间', color: 'coral' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -300,9 +301,11 @@ function TwentyFourGame() {
   );
 }
 
-type ReactionPhase = 'idle' | 'waiting' | 'go' | 'racing' | 'won' | 'crashed' | 'early';
+type ReactionPhase = 'idle' | 'waiting' | 'go' | 'racing' | 'won' | 'early';
 const hurdleRaceLength = 31;
 const hurdleSteps = new Set([5, 8, 11, 14, 17, 20, 23, 26, 29]);
+const waterSteps = new Set([9, 18, 27]);
+const raceObstacleCount = hurdleSteps.size + waterSteps.size;
 const hurdleStepDuration = 560;
 const hurdleJumpDuration = 760;
 const hurdleJumpPeak = 122;
@@ -321,10 +324,24 @@ function ReactionGame() {
   const [cleared, setCleared] = useState(0);
   const [bestStep, setBestStep] = useState(0);
   const [jumping, setJumping] = useState(false);
+  const [opponentStep, setOpponentStep] = useState(0);
+  const [opponentJumping, setOpponentJumping] = useState(false);
+  const [opponentSlowTicks, setOpponentSlowTicks] = useState(0);
+  const [opponentSlowReason, setOpponentSlowReason] = useState<'hurdle' | 'water' | null>(null);
+  const [opponentMistakes, setOpponentMistakes] = useState(0);
+  const [hurdleHits, setHurdleHits] = useState(0);
+  const [waterHits, setWaterHits] = useState(0);
+  const [slowTicks, setSlowTicks] = useState(0);
+  const [slowReason, setSlowReason] = useState<'hurdle' | 'water' | null>(null);
   const signalTimer = useRef<number | null>(null);
   const jumpTimer = useRef<number | null>(null);
+  const opponentJumpTimer = useRef<number | null>(null);
   const startedAt = useRef(0);
   const stepRef = useRef(0);
+  const opponentStepRef = useRef(0);
+  const opponentTurnRef = useRef(0);
+  const slowTicksRef = useRef(0);
+  const opponentSlowTicksRef = useRef(0);
   const jumpActive = useRef(false);
   const jumpStartedAt = useRef(0);
 
@@ -332,16 +349,80 @@ function ReactionGame() {
     if (phase !== 'racing') return;
     const raceTimer = window.setInterval(() => {
       const currentStep = stepRef.current;
-      const needsJump = hurdleSteps.has(currentStep);
+      const hitsHurdle = hurdleSteps.has(currentStep);
+      const hitsWater = waterSteps.has(currentStep);
+      const needsJump = hitsHurdle || hitsWater;
+      const requiredHeight = hitsWater ? 32 : 46;
       const actualHeight = jumpActive.current ? hurdleJumpHeight(jumpStartedAt.current) : 0;
+      const currentOpponentStep = opponentStepRef.current;
+      if (currentOpponentStep < hurdleRaceLength) {
+        const currentOpponentTurn = opponentTurnRef.current;
+        opponentTurnRef.current += 1;
+        if (opponentSlowTicksRef.current > 0) {
+          const nextOpponentSlowTicks = opponentSlowTicksRef.current - 1;
+          opponentSlowTicksRef.current = nextOpponentSlowTicks;
+          setOpponentSlowTicks(nextOpponentSlowTicks);
+          if (nextOpponentSlowTicks === 0) setOpponentSlowReason(null);
+        } else {
+          const opponentStride = currentOpponentTurn % 8 === 3 ? 2 : currentOpponentTurn % 8 === 6 ? 0 : 1;
+          const nextOpponentStep = Math.min(hurdleRaceLength, currentOpponentStep + opponentStride);
+          const crossedSteps = Array.from(
+            { length: Math.max(0, nextOpponentStep - currentOpponentStep) },
+            (_, index) => currentOpponentStep + index + 1,
+          );
+          const crossesWater = crossedSteps.some((raceStep) => waterSteps.has(raceStep));
+          const crossesHurdle = crossedSteps.some((raceStep) => hurdleSteps.has(raceStep));
+          const mistakeReason = crossesWater && Math.random() < .3
+            ? 'water'
+            : crossesHurdle && Math.random() < .22
+              ? 'hurdle'
+              : null;
 
-      if (needsJump && actualHeight < 46) {
-        setBestStep((current) => Math.max(current, currentStep));
-        setPhase('crashed');
+          if (mistakeReason) {
+            const penalty = mistakeReason === 'water' ? 3 : 2;
+            opponentSlowTicksRef.current = penalty;
+            setOpponentSlowTicks(penalty);
+            setOpponentSlowReason(mistakeReason);
+            setOpponentMistakes((value) => value + 1);
+            setOpponentJumping(false);
+            if (opponentJumpTimer.current !== null) {
+              window.clearTimeout(opponentJumpTimer.current);
+              opponentJumpTimer.current = null;
+            }
+          } else if (crossesHurdle || crossesWater) {
+            setOpponentJumping(true);
+            if (opponentJumpTimer.current !== null) window.clearTimeout(opponentJumpTimer.current);
+            opponentJumpTimer.current = window.setTimeout(() => {
+              setOpponentJumping(false);
+              opponentJumpTimer.current = null;
+            }, hurdleJumpDuration);
+          }
+          opponentStepRef.current = nextOpponentStep;
+          setOpponentStep(nextOpponentStep);
+        }
+      }
+
+      if (slowTicksRef.current > 0) {
+        const nextSlowTicks = slowTicksRef.current - 1;
+        slowTicksRef.current = nextSlowTicks;
+        setSlowTicks(nextSlowTicks);
+        if (nextSlowTicks === 0) setSlowReason(null);
         return;
       }
 
-      if (needsJump) setCleared((value) => value + 1);
+      if (hitsWater && actualHeight < requiredHeight) {
+        slowTicksRef.current = 3;
+        setSlowTicks(3);
+        setSlowReason('water');
+        setWaterHits((value) => value + 1);
+      } else if (hitsHurdle && actualHeight < requiredHeight) {
+        slowTicksRef.current = 2;
+        setSlowTicks(2);
+        setSlowReason('hurdle');
+        setHurdleHits((value) => value + 1);
+      } else if (needsJump) {
+        setCleared((value) => value + 1);
+      }
       if (currentStep >= hurdleRaceLength) {
         setBestStep(hurdleRaceLength);
         setPhase('won');
@@ -358,14 +439,21 @@ function ReactionGame() {
   useEffect(() => () => {
     if (signalTimer.current !== null) window.clearTimeout(signalTimer.current);
     if (jumpTimer.current !== null) window.clearTimeout(jumpTimer.current);
+    if (opponentJumpTimer.current !== null) window.clearTimeout(opponentJumpTimer.current);
   }, []);
 
   function start() {
     if (signalTimer.current !== null) window.clearTimeout(signalTimer.current);
     if (jumpTimer.current !== null) window.clearTimeout(jumpTimer.current);
+    if (opponentJumpTimer.current !== null) window.clearTimeout(opponentJumpTimer.current);
     signalTimer.current = null;
     jumpTimer.current = null;
+    opponentJumpTimer.current = null;
     stepRef.current = 0;
+    opponentStepRef.current = 0;
+    opponentTurnRef.current = 0;
+    slowTicksRef.current = 0;
+    opponentSlowTicksRef.current = 0;
     jumpActive.current = false;
     jumpStartedAt.current = 0;
     setPhase('waiting');
@@ -373,6 +461,15 @@ function ReactionGame() {
     setStep(0);
     setCleared(0);
     setJumping(false);
+    setOpponentStep(0);
+    setOpponentJumping(false);
+    setOpponentSlowTicks(0);
+    setOpponentSlowReason(null);
+    setOpponentMistakes(0);
+    setHurdleHits(0);
+    setWaterHits(0);
+    setSlowTicks(0);
+    setSlowReason(null);
     signalTimer.current = window.setTimeout(() => {
       setPhase('go');
       startedAt.current = performance.now();
@@ -409,7 +506,17 @@ function ReactionGame() {
       setResult(milliseconds);
       setBest((current) => current === null ? milliseconds : Math.min(current, milliseconds));
       stepRef.current = 0;
+      opponentStepRef.current = 0;
+      opponentTurnRef.current = 0;
+      slowTicksRef.current = 0;
+      opponentSlowTicksRef.current = 0;
       setStep(0);
+      setOpponentStep(0);
+      setOpponentSlowTicks(0);
+      setOpponentSlowReason(null);
+      setOpponentMistakes(0);
+      setSlowTicks(0);
+      setSlowReason(null);
       setPhase('racing');
       return;
     }
@@ -424,21 +531,32 @@ function ReactionGame() {
     idle: ['🏁', '准备起跑', '点击进入起跑器'],
     waiting: ['🏃', '各就位…', '等待发令，现在点击就是抢跑'],
     go: ['🔫', '起跑！', '点击冲出去'],
-    won: ['🏆', '跨栏通关！', `${result} ms 起跑 · 越过 ${hurdleSteps.size} 个栏架 · 点击再跑`],
-    crashed: ['💥', '撞到栏架了', `跑到 ${step}/${hurdleRaceLength} · 点击重新起跑`],
+    won: ['🏆', opponentStep >= hurdleRaceLength ? '对手先到，你也完成！' : '领先冲线！', `${result} ms 起跑 · 越过 ${raceObstacleCount} 个障碍 · 点击再跑`],
     early: ['✋', '抢跑了', '等发令后再点击 · 点此重来'],
   }[phase];
 
   const progress = step / hurdleRaceLength;
+  const opponentLead = Math.max(-1.25, Math.min(1.25, opponentStep - step));
+  const opponentLeft = 120 + opponentLead * 58;
+  const raceHint = slowTicks > 0
+    ? `${slowReason === 'water' ? '入水' : '撞栏'}减速 ${slowTicks} 拍`
+    : opponentSlowTicks > 0
+      ? `对手${opponentSlowReason === 'water' ? '入水' : '撞栏'}减速 ${opponentSlowTicks} 拍`
+      : '点击 · 跳过障碍';
+  const finishRating = result !== null && result <= 220 ? 5 : result !== null && result <= 300 ? 4 : 3;
   const rating = phase === 'won'
-    ? result !== null && result <= 220 ? 5 : result !== null && result <= 300 ? 4 : 3
+    ? Math.max(1, finishRating - Math.min(2, hurdleHits + waterHits))
     : progress >= .75 ? 4 : progress >= .5 ? 3 : progress >= .25 ? 2 : 1;
 
   return (
     <div className="reaction-game">
       <div className="reaction-meta">
         <span>最佳起跑 <strong>{best === null ? '—' : `${best} ms`}</strong></span>
-        <span>跨栏 <strong>{cleared}/{hurdleSteps.size}</strong></span>
+        <span>障碍 <strong>{cleared}/{raceObstacleCount}</strong></span>
+        <span>撞栏 <strong>{hurdleHits}</strong></span>
+        <span>入水 <strong>{waterHits}</strong></span>
+        <span>对手 <strong>{opponentStep}/{hurdleRaceLength}</strong></span>
+        <span>对手失误 <strong>{opponentMistakes}</strong></span>
         <span>最远 <strong>{bestStep}/{hurdleRaceLength}</strong></span>
       </div>
       <button
@@ -461,15 +579,26 @@ function ReactionGame() {
           <span className="race-track" />
           <span className="hurdle-course" style={{ transform: `translateX(${112 - step * 92}px)` }}>
             <span className="race-start-line" />
-            {Array.from({ length: hurdleRaceLength + 1 }, (_, index) => (
-              hurdleSteps.has(index) ? <span className="race-hurdle" style={{ left: `${index * 92}px` }} key={index} /> : null
-            ))}
+            {Array.from({ length: hurdleRaceLength + 1 }).flatMap((_, index) => hurdleSteps.has(index) ? [
+              <span className="race-hurdle race-hurdle-opponent" style={{ left: `${index * 92}px` }} key={`opponent-${index}`} />,
+              <span className="race-hurdle" style={{ left: `${index * 92}px` }} key={`player-${index}`} />,
+            ] : [])}
+            {Array.from({ length: hurdleRaceLength + 1 }).flatMap((_, index) => waterSteps.has(index) ? [
+              <span className="race-water race-water-opponent" style={{ left: `${index * 92}px` }} key={`opponent-water-${index}`} />,
+              <span className="race-water" style={{ left: `${index * 92}px` }} key={`player-water-${index}`} />,
+            ] : [])}
             <span className="race-finish-line" style={{ left: `${hurdleRaceLength * 92}px` }}>FINISH</span>
           </span>
-          <span className={`race-runner ${jumping ? 'is-jumping' : ''} ${phase === 'crashed' ? 'is-crashed' : ''}`}>🏃</span>
+          <span
+            className={`race-opponent ${phase === 'racing' && opponentStep < hurdleRaceLength ? 'is-running' : ''} ${opponentJumping ? 'is-jumping' : ''} ${opponentSlowTicks > 0 ? 'is-slowed' : ''} ${opponentStep >= hurdleRaceLength ? 'is-finished' : ''}`}
+            style={{ left: `${opponentLeft}px` }}
+          ><i>对手</i>🏃‍♀️</span>
+          <span className={`race-opponent-splash ${opponentSlowReason === 'water' ? 'is-visible' : ''}`} style={{ left: `${opponentLeft}px` }}>💦</span>
+          <span className={`race-runner ${jumping ? 'is-jumping' : ''} ${slowTicks > 0 ? 'is-slowed' : ''}`}>🏃</span>
+          <span className={`race-splash ${slowReason === 'water' ? 'is-visible' : ''}`}>💦</span>
         </span>
         {phase === 'racing' ? (
-          <span className="race-hud"><strong>{result} ms 起跑</strong><small>点击 · 跨栏</small><i style={{ width: `${Math.min(100, progress * 100)}%` }} /></span>
+          <span className={`race-hud ${slowTicks > 0 ? 'is-slowed' : ''} ${slowReason === 'water' ? 'is-water' : ''}`}><strong>{result} ms · 你 {step} / 对手 {opponentStep}</strong><small>{raceHint}</small><i style={{ width: `${Math.min(100, progress * 100)}%` }} /></span>
         ) : copy ? (
           <span className="reaction-copy">
             <span className="reaction-icon">{copy[0]}</span>
@@ -478,8 +607,8 @@ function ReactionGame() {
           </span>
         ) : null}
       </button>
-      <p className="reaction-instruction">先等发令并点击起跑；跑动后，每点一下跳过一个栏架。</p>
-      {(phase === 'won' || phase === 'crashed') && <StarRating value={rating} label="跨栏评分" />}
+      <p className="reaction-instruction">你和对手都会失误；撞栏减速两拍，入水减速三拍，冲线后停下。</p>
+      {phase === 'won' && <StarRating value={rating} label="跨栏评分" />}
     </div>
   );
 }
@@ -733,6 +862,261 @@ function ColorGame() {
   );
 }
 
+type MazeSize = 11 | 13 | 19;
+type MazeWall = 'top' | 'right' | 'bottom' | 'left';
+type MazeDirectionKey = 'up' | 'right' | 'down' | 'left';
+type MazeCell = Record<MazeWall, boolean>;
+
+const mazeSizes: Array<{ size: MazeSize; label: string }> = [
+  { size: 11, label: '轻松' },
+  { size: 13, label: '标准' },
+  { size: 19, label: '挑战' },
+];
+
+const mazeDirections: Array<{
+  key: MazeDirectionKey;
+  dx: number;
+  dy: number;
+  wall: MazeWall;
+  opposite: MazeWall;
+}> = [
+  { key: 'up', dx: 0, dy: -1, wall: 'top', opposite: 'bottom' },
+  { key: 'right', dx: 1, dy: 0, wall: 'right', opposite: 'left' },
+  { key: 'down', dx: 0, dy: 1, wall: 'bottom', opposite: 'top' },
+  { key: 'left', dx: -1, dy: 0, wall: 'left', opposite: 'right' },
+];
+
+function createMaze(size: MazeSize, seed: number) {
+  let randomState = seed >>> 0;
+  const random = () => {
+    randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
+    return randomState / 4294967296;
+  };
+  const cells: MazeCell[] = Array.from({ length: size * size }, () => ({ top: true, right: true, bottom: true, left: true }));
+  const visited = new Set([0]);
+  const stack = [0];
+
+  while (stack.length > 0) {
+    const current = stack[stack.length - 1];
+    const x = current % size;
+    const y = Math.floor(current / size);
+    const available = mazeDirections.filter((direction) => {
+      const nextX = x + direction.dx;
+      const nextY = y + direction.dy;
+      return nextX >= 0 && nextX < size && nextY >= 0 && nextY < size && !visited.has(nextY * size + nextX);
+    });
+
+    if (available.length === 0) {
+      stack.pop();
+      continue;
+    }
+
+    const direction = available[Math.floor(random() * available.length)];
+    const next = (y + direction.dy) * size + x + direction.dx;
+    cells[current][direction.wall] = false;
+    cells[next][direction.opposite] = false;
+    visited.add(next);
+    stack.push(next);
+  }
+
+  return cells;
+}
+
+function mazeShortestPath(cells: MazeCell[], size: MazeSize) {
+  const target = cells.length - 1;
+  const queue: Array<{ index: number; distance: number }> = [{ index: 0, distance: 0 }];
+  const visited = new Set([0]);
+
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    if (current.index === target) return current.distance;
+    const x = current.index % size;
+    const y = Math.floor(current.index / size);
+    mazeDirections.forEach((direction) => {
+      if (cells[current.index][direction.wall]) return;
+      const next = (y + direction.dy) * size + x + direction.dx;
+      if (next < 0 || next >= cells.length || visited.has(next)) return;
+      visited.add(next);
+      queue.push({ index: next, distance: current.distance + 1 });
+    });
+  }
+
+  return target;
+}
+
+const firstMaze = createMaze(11, 11121);
+
+function MazeGame() {
+  const [selectedSize, setSelectedSize] = useState<MazeSize>(11);
+  const [playedSize, setPlayedSize] = useState<MazeSize>(11);
+  const [maze, setMaze] = useState<MazeCell[]>(firstMaze);
+  const [player, setPlayer] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const [visited, setVisited] = useState<number[]>([0]);
+  const [optimalSteps, setOptimalSteps] = useState(() => mazeShortestPath(firstMaze, 11));
+  const [elapsed, setElapsed] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [bestBySize, setBestBySize] = useState<Record<MazeSize, number | null>>({ 11: null, 13: null, 19: null });
+  const startedAt = useRef(0);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const blockedTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setInterval(() => {
+      setElapsed(Number(((performance.now() - startedAt.current) / 1000).toFixed(1)));
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [playing]);
+
+  useEffect(() => () => {
+    if (blockedTimer.current !== null) window.clearTimeout(blockedTimer.current);
+  }, []);
+
+  function showBlocked() {
+    setBlocked(true);
+    if (blockedTimer.current !== null) window.clearTimeout(blockedTimer.current);
+    blockedTimer.current = window.setTimeout(() => {
+      setBlocked(false);
+      blockedTimer.current = null;
+    }, 180);
+  }
+
+  function selectMazeSize(size: MazeSize) {
+    setSelectedSize(size);
+    setPlayedSize(size);
+    const preview = createMaze(size, size * 1001);
+    setMaze(preview);
+    setPlayer(0);
+    setSteps(0);
+    setVisited([0]);
+    setOptimalSteps(mazeShortestPath(preview, size));
+    setElapsed(0);
+    setFinished(false);
+  }
+
+  function start() {
+    const nextMaze = createMaze(selectedSize, Date.now() ^ Math.floor(Math.random() * 100000));
+    setPlayedSize(selectedSize);
+    setMaze(nextMaze);
+    setPlayer(0);
+    setSteps(0);
+    setVisited([0]);
+    setOptimalSteps(mazeShortestPath(nextMaze, selectedSize));
+    setElapsed(0);
+    setFinished(false);
+    setBlocked(false);
+    startedAt.current = performance.now();
+    setPlaying(true);
+    window.requestAnimationFrame(() => boardRef.current?.focus());
+  }
+
+  function move(directionKey: MazeDirectionKey) {
+    if (!playing) return;
+    const direction = mazeDirections.find((item) => item.key === directionKey);
+    if (!direction || maze[player][direction.wall]) {
+      showBlocked();
+      return;
+    }
+    const x = player % playedSize;
+    const y = Math.floor(player / playedSize);
+    const next = (y + direction.dy) * playedSize + x + direction.dx;
+    const nextSteps = steps + 1;
+    setPlayer(next);
+    setSteps(nextSteps);
+    setVisited((current) => current.includes(next) ? current : [...current, next]);
+
+    if (next === maze.length - 1) {
+      const result = Number(((performance.now() - startedAt.current) / 1000).toFixed(1));
+      setElapsed(result);
+      setPlaying(false);
+      setFinished(true);
+      setBestBySize((current) => ({
+        ...current,
+        [playedSize]: current[playedSize] === null ? result : Math.min(current[playedSize] ?? result, result),
+      }));
+    }
+  }
+
+  function handleMazeKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const keyMap: Record<string, MazeDirectionKey | undefined> = {
+      ArrowUp: 'up', w: 'up', W: 'up',
+      ArrowRight: 'right', d: 'right', D: 'right',
+      ArrowDown: 'down', s: 'down', S: 'down',
+      ArrowLeft: 'left', a: 'left', A: 'left',
+    };
+    const direction = keyMap[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    move(direction);
+  }
+
+  const efficiency = steps / Math.max(1, optimalSteps);
+  const rating = efficiency <= 1.05 ? 5 : efficiency <= 1.25 ? 4 : efficiency <= 1.6 ? 3 : efficiency <= 2.1 ? 2 : 1;
+  const best = bestBySize[playedSize];
+
+  return (
+    <div className="maze-game">
+      <div className="game-stats">
+        <span>规格 <strong>{playedSize * playedSize} 格</strong></span>
+        <span>步数 <strong>{steps}</strong></span>
+        <span>最短 <strong>{optimalSteps}</strong></span>
+        <span>用时 <strong>{elapsed.toFixed(1)}s</strong></span>
+        <span>最佳 <strong>{best === null ? '—' : `${best.toFixed(1)}s`}</strong></span>
+      </div>
+      <div className="maze-frame">
+        <div
+          ref={boardRef}
+          className={`maze-board size-${playedSize} ${blocked ? 'is-blocked' : ''}`}
+          style={{ gridTemplateColumns: `repeat(${playedSize}, 1fr)` }}
+          tabIndex={0}
+          onKeyDown={handleMazeKey}
+          aria-label={`${playedSize}乘${playedSize}迷宫，使用方向键移动小马到终点`}
+        >
+          {maze.map((cell, index) => {
+            const x = index % playedSize;
+            const y = Math.floor(index / playedSize);
+            const wallClasses = [
+              cell.top ? 'wall-top' : '',
+              cell.left ? 'wall-left' : '',
+              x === playedSize - 1 && cell.right ? 'wall-right' : '',
+              y === playedSize - 1 && cell.bottom ? 'wall-bottom' : '',
+            ].filter(Boolean).join(' ');
+            return (
+              <span className={`maze-cell ${wallClasses} ${visited.includes(index) ? 'is-visited' : ''} ${index === 0 ? 'is-start' : ''} ${index === maze.length - 1 ? 'is-goal' : ''}`} key={index}>
+                {index === player ? <b aria-label="小马当前位置">🐴</b> : index === maze.length - 1 ? <i aria-label="终点">🏁</i> : null}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div className="maze-controls" role="group" aria-label="迷宫移动方向">
+        <button type="button" className="maze-up" onClick={() => move('up')} aria-label="向上移动">↑</button>
+        <button type="button" className="maze-left" onClick={() => move('left')} aria-label="向左移动">←</button>
+        <span aria-hidden="true">🧭</span>
+        <button type="button" className="maze-right" onClick={() => move('right')} aria-label="向右移动">→</button>
+        <button type="button" className="maze-down" onClick={() => move('down')} aria-label="向下移动">↓</button>
+      </div>
+      <p className="maze-instruction">使用方向键、WASD 或屏幕按钮，把小马带到右下角的旗帜。</p>
+      {!playing && (
+        <div className="game-callout maze-callout">
+          <strong>{finished ? '找到出口！' : '准备探路'}</strong>
+          <span>{finished ? `${steps} 步 · 最短路线 ${optimalSteps} 步 · 用时 ${elapsed.toFixed(1)} 秒` : `选择迷宫大小：${selectedSize * selectedSize} 格（${selectedSize}×${selectedSize}）`}</span>
+          {finished && <StarRating value={rating} label="迷宫评分" />}
+          <div className="difficulty-picker" role="group" aria-label="选择迷宫大小">
+            {mazeSizes.map((option) => (
+              <button type="button" key={option.size} aria-pressed={selectedSize === option.size} onClick={() => selectMazeSize(option.size)}>{option.label} {option.size * option.size} 格</button>
+            ))}
+          </div>
+          <button type="button" onClick={start}>{finished ? '换一张迷宫' : '开始游戏'}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type RhythmMapId = 'night' | 'sunset' | 'space';
 type RhythmMap = {
   id: RhythmMapId;
@@ -952,7 +1336,8 @@ function ActiveGame({ id }: { id: GameId }) {
   if (id === 'reaction') return <ReactionGame />;
   if (id === 'memory') return <MemoryGame />;
   if (id === 'order') return <OrderGame />;
-  return <ColorGame />;
+  if (id === 'color') return <ColorGame />;
+  return <MazeGame />;
 }
 
 export default function Home() {
@@ -981,7 +1366,7 @@ export default function Home() {
         <div className="hero-copy">
           <span className="eyebrow">MINI GAME CLUB</span>
           <h1>今天想挑战<br /><em>哪一种能力？</em></h1>
-          <p>六款轻量小游戏，练手速、算力、记忆、专注与反应。无需登录，点开就玩。</p>
+          <p>七款轻量小游戏，练手速、算力、记忆、专注、空间与反应。无需登录，点开就玩。</p>
         </div>
         <div className="hero-orbit" aria-hidden="true">
           <span className="orbit-center">PLAY</span><span className="orbit-dot dot-one">24</span><span className="orbit-dot dot-two">🏁</span><span className="orbit-dot dot-three">🐹</span>
@@ -990,7 +1375,7 @@ export default function Home() {
 
       <section className="game-section" aria-labelledby="game-list-title">
         <div className="section-heading">
-          <div><span className="eyebrow">6 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
+          <div><span className="eyebrow">7 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
           <p>每局不到一分钟，随时刷新你的最好成绩。</p>
         </div>
         <div className="game-grid">
