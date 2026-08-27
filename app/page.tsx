@@ -21,7 +21,7 @@ const games: Array<{
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
   { id: 'maze', icon: '🧩', title: '迷宫探险', description: '多条路线自由选择，少走弯路冲向终点。', tag: '空间', color: 'coral' },
   { id: 'timing', icon: '⏱', title: '时间感应', description: '选择 3—7 秒，凭感觉在指定时刻按停。', tag: '感觉', color: 'mint' },
-  { id: 'shooter', icon: '🎯', title: '神枪手', description: '瞄准 9 个旋转靶，每命中一个就会更快。', tag: '瞄准', color: 'steel' },
+  { id: 'shooter', icon: '🎯', title: '神枪手', description: '守住固定准星，等旋转靶经过时开枪。', tag: '瞄准', color: 'steel' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -1058,6 +1058,8 @@ function ShooterGame() {
   const [remainingTargets, setRemainingTargets] = useState<Set<number>>(() => new Set(shooterTargets));
   const [muzzleFlash, setMuzzleFlash] = useState(false);
   const muzzleTimer = useRef<number | null>(null);
+  const rangeRef = useRef<HTMLDivElement | null>(null);
+  const sightRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => () => {
     if (muzzleTimer.current !== null) window.clearTimeout(muzzleTimer.current);
@@ -1076,6 +1078,7 @@ function ShooterGame() {
     setBestCombo(0);
     setRemainingTargets(new Set(shooterTargets));
     setPhase('running');
+    window.requestAnimationFrame(() => rangeRef.current?.focus());
   }
 
   function hitTarget(target: number) {
@@ -1108,6 +1111,30 @@ function ShooterGame() {
     setCombo(0);
   }
 
+  function shootAtSight() {
+    if (phase !== 'running' || !rangeRef.current || !sightRef.current) return;
+    const sightRect = sightRef.current.getBoundingClientRect();
+    const sightX = sightRect.left + sightRect.width / 2;
+    const sightY = sightRect.top + sightRect.height / 2;
+    let aimedTarget: number | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    rangeRef.current.querySelectorAll<HTMLElement>('[data-shooter-target]').forEach((targetElement) => {
+      const targetRect = targetElement.getBoundingClientRect();
+      const targetX = targetRect.left + targetRect.width / 2;
+      const targetY = targetRect.top + targetRect.height / 2;
+      const distance = Math.hypot(targetX - sightX, targetY - sightY);
+      const hitRadius = Math.max(36, targetRect.width * .65);
+      if (distance <= hitRadius && distance < nearestDistance) {
+        aimedTarget = Number(targetElement.dataset.shooterTarget);
+        nearestDistance = distance;
+      }
+    });
+
+    if (aimedTarget === null) miss();
+    else hitTarget(aimedTarget);
+  }
+
   const accuracy = shots === 0 ? 0 : Math.round((hits / shots) * 100);
   const targetDuration = Math.max(.82, 4 - hits * .35);
   const speedMultiplier = 4 / targetDuration;
@@ -1124,33 +1151,46 @@ function ShooterGame() {
         <span>连击 <strong>{combo}</strong></span>
         <span>速度 <strong>×{speedMultiplier.toFixed(1)}</strong></span>
       </div>
-      <div className={`shooter-range is-${phase}`} style={rangeStyle} onClick={miss} role="group" aria-label="九个旋转靶射击区">
+      <div
+        ref={rangeRef}
+        className={`shooter-range is-${phase}`}
+        style={rangeStyle}
+        onClick={shootAtSight}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            shootAtSight();
+          }
+        }}
+        role="button"
+        tabIndex={phase === 'running' ? 0 : -1}
+        aria-label="固定准星射击区，点击或按空格开枪"
+      >
         <div className="shooter-grid">
           {shooterTargets.filter((target) => remainingTargets.has(target)).map((target) => (
             <div className="shooter-cell" style={{ '--target-angle': `${target * 40}deg` } as CSSProperties} key={target}>
-              <button
-                type="button"
+              <span
                 className="shooter-target"
-                disabled={phase !== 'running'}
-                onClick={(event) => { event.stopPropagation(); hitTarget(target); }}
-                aria-label={`射击第 ${target + 1} 个靶子`}
+                data-shooter-target={target}
+                aria-hidden="true"
               >
                 <span className="shooter-target-disc"><i>{target + 1}</i></span>
-              </button>
+              </span>
             </div>
           ))}
         </div>
+        <span ref={sightRef} className="shooter-sight" aria-hidden="true"><i>固定瞄准点</i></span>
         <span className={`shooter-gun ${muzzleFlash ? 'is-firing' : ''}`} aria-hidden="true">🔫</span>
         {phase !== 'running' && (
           <div className="shooter-callout">
             <strong>{phase === 'finished' ? completed ? '全部命中！' : `击中 ${hits} / 9` : '圆环九靶'}</strong>
-            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '不限时间：9 个靶子在同一个圆环中旋转；打中一个少一个，并且转得更快。'}</small>
+            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '准星固定不动；等旋转靶经过准星时点击场地开枪，打中一个少一个。'}</small>
             {phase === 'finished' && <StarRating value={rating} label="神枪手评分" />}
             <button type="button" onClick={(event) => { event.stopPropagation(); start(); }}>{phase === 'finished' ? '再来一局' : '开始射击'}</button>
           </div>
         )}
       </div>
-      <p className="shooter-instruction">点击靶子开枪，击中的靶子会消失；点击空白算脱靶。</p>
+      <p className="shooter-instruction">瞄准点固定在圆环上方；等靶经过时点击场地或按空格开枪，没对准算脱靶。</p>
     </div>
   );
 }

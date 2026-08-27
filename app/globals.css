@@ -580,6 +580,7 @@ footer {
 .shooter-stats { flex-wrap: wrap; }
 .shooter-range {
   --target-speed: 2.25s;
+  --orbit-radius: 126px;
   position: relative;
   min-height: 412px;
   overflow: hidden;
@@ -590,12 +591,12 @@ footer {
   box-shadow: inset 0 0 42px rgba(15,28,39,.28), 6px 6px 0 #263849;
   touch-action: manipulation;
 }
+.shooter-range:focus-visible { outline: 4px solid #f2d34c; outline-offset: 4px; }
 .shooter-range::before { content: "PONY SHOOTING RANGE"; position: absolute; top: 9px; left: 50%; color: rgba(255,255,255,.48); font-size: 10px; font-weight: 900; letter-spacing: .22em; transform: translateX(-50%); white-space: nowrap; }
-.shooter-grid { --orbit-radius: 126px; position: absolute; z-index: 2; left: 50%; top: 48%; width: min(330px, calc(100% - 42px)); aspect-ratio: 1; border: 2px dashed rgba(255,255,255,.36); border-radius: 50%; box-shadow: inset 0 0 0 22px rgba(255,255,255,.025), 0 0 0 10px rgba(23,38,49,.08); animation: shooter-wheel var(--target-speed) linear infinite; transform: translate(-50%, -50%); }
+.shooter-grid { position: absolute; z-index: 2; left: 50%; top: 48%; width: min(330px, calc(100% - 42px)); aspect-ratio: 1; border: 2px dashed rgba(255,255,255,.36); border-radius: 50%; box-shadow: inset 0 0 0 22px rgba(255,255,255,.025), 0 0 0 10px rgba(23,38,49,.08); animation: shooter-wheel var(--target-speed) linear infinite; transform: translate(-50%, -50%); }
 .shooter-grid::before { content: ""; position: absolute; inset: 41%; border: 2px solid rgba(242,211,76,.7); border-radius: 50%; background: rgba(38,56,73,.42); box-shadow: 0 0 0 12px rgba(242,211,76,.06); }
 .shooter-cell { --target-angle: 0deg; position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--target-angle)) translateY(calc(var(--orbit-radius) * -1)); }
-.shooter-target { position: absolute; left: -36px; top: -36px; width: 72px; height: 72px; border: 0; background: transparent; padding: 0; cursor: crosshair; filter: drop-shadow(4px 6px 0 rgba(15,28,39,.28)); touch-action: manipulation; }
-.shooter-target:disabled { cursor: default; }
+.shooter-target { position: absolute; left: -36px; top: -36px; display: block; width: 72px; height: 72px; filter: drop-shadow(4px 6px 0 rgba(15,28,39,.28)); pointer-events: none; }
 .is-idle .shooter-grid,
 .is-finished .shooter-grid { animation-play-state: paused; filter: grayscale(.45); }
 .shooter-target-disc { position: absolute; inset: 5px; display: grid; place-items: center; border: 3px solid #263849; border-radius: 50%; background: repeating-radial-gradient(circle, #e23e48 0 8px, #fff7e4 9px 16px, #273d4a 17px 22px, #fff7e4 23px 29px, #e23e48 30px 36px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.34); }
@@ -604,6 +605,11 @@ footer {
 .shooter-target-disc::after { transform: translateX(-50%) rotate(90deg); }
 .shooter-target-disc i { position: relative; z-index: 2; display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: #f2d34c; color: #263849; font-size: 10px; font-style: normal; font-weight: 1000; }
 .shooter-target::after { content: ""; position: absolute; left: 50%; bottom: -12px; width: 5px; height: 21px; border-radius: 4px; background: #263849; transform: translateX(-50%); }
+.shooter-sight { position: absolute; z-index: 5; left: 50%; top: calc(48% - var(--orbit-radius)); width: 54px; height: 54px; border: 3px solid #f2d34c; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 5px rgba(242,211,76,.18), inset 0 0 0 5px rgba(242,211,76,.14), 0 0 18px rgba(242,211,76,.48); transform: translate(-50%, -50%); }
+.shooter-sight::before,
+.shooter-sight::after { content: ""; position: absolute; left: 50%; top: -10px; width: 2px; height: calc(100% + 20px); background: #f2d34c; transform: translateX(-50%); }
+.shooter-sight::after { transform: translateX(-50%) rotate(90deg); }
+.shooter-sight i { position: absolute; left: 50%; top: 61px; border-radius: 999px; background: #f2d34c; color: #263849; padding: 4px 8px; font-size: 9px; font-style: normal; font-weight: 1000; line-height: 1; white-space: nowrap; transform: translateX(-50%); }
 .shooter-gun { position: absolute; z-index: 3; left: 50%; bottom: 7px; font-size: 48px; line-height: 1; pointer-events: none; filter: drop-shadow(3px 4px 0 rgba(15,28,39,.28)); transform: translateX(-50%) rotate(-12deg); transform-origin: center bottom; }
 .shooter-gun.is-firing { animation: shooter-recoil .09s ease-out; }
 .shooter-callout { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(24,38,49,.82); color: white; padding: 28px; text-align: center; backdrop-filter: blur(5px); }
@@ -805,9 +811,9 @@ footer {
   .color-choices.choices-6 { grid-template-columns: repeat(3, 1fr); }
   .color-choices.choices-8 { grid-template-columns: repeat(4, 1fr); }
   .color-word { min-height: 260px; }
-  .shooter-grid { --orbit-radius: 96px; width: min(270px, calc(100% - 24px)); }
+  .shooter-range { --orbit-radius: 96px; min-height: calc(100vh - 205px); }
+  .shooter-grid { width: min(270px, calc(100% - 24px)); }
   .shooter-target { left: -30px; top: -30px; width: 60px; height: 60px; }
-  .shooter-range { min-height: calc(100vh - 205px); }
   footer { flex-direction: column; }
 }
 
