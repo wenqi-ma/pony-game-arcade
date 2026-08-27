@@ -19,7 +19,7 @@ const games: Array<{
   { id: 'memory', icon: '🧠', title: '记忆翻牌', description: '翻开卡片，找出所有相同图案。', tag: '记忆', color: 'pink' },
   { id: 'order', icon: '↗', title: '数字追踪', description: '从小到大，按顺序点完数字。', tag: '专注', color: 'blue' },
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
-  { id: 'maze', icon: '🧩', title: '迷宫探险', description: '找到正确路线，少走弯路冲向终点。', tag: '空间', color: 'coral' },
+  { id: 'maze', icon: '🧩', title: '迷宫探险', description: '多条路线自由选择，少走弯路冲向终点。', tag: '空间', color: 'coral' },
   { id: 'timing', icon: '⏱', title: '时间感应', description: '选择 3—7 秒，凭感觉在指定时刻按停。', tag: '感觉', color: 'mint' },
   { id: 'shooter', icon: '🎯', title: '神枪手', description: '瞄准 9 个旋转靶，每命中一个就会更快。', tag: '瞄准', color: 'steel' },
 ];
@@ -1212,6 +1212,40 @@ function createMaze(size: MazeSize, seed: number) {
     stack.push(next);
   }
 
+  const closedPassages: Array<{ current: number; next: number; wall: MazeWall; opposite: MazeWall }> = [];
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const current = y * size + x;
+      if (x < size - 1 && cells[current].right) closedPassages.push({ current, next: current + 1, wall: 'right', opposite: 'left' });
+      if (y < size - 1 && cells[current].bottom) closedPassages.push({ current, next: current + size, wall: 'bottom', opposite: 'top' });
+    }
+  }
+
+  for (let index = closedPassages.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [closedPassages[index], closedPassages[swapIndex]] = [closedPassages[swapIndex], closedPassages[index]];
+  }
+
+  const loopCount = Math.max(10, Math.floor(size * size * .12));
+  closedPassages.slice(0, loopCount).forEach((passage) => {
+    cells[passage.current][passage.wall] = false;
+    cells[passage.next][passage.opposite] = false;
+  });
+
+  const openPassage = (current: number, next: number, wall: MazeWall, opposite: MazeWall) => {
+    cells[current][wall] = false;
+    cells[next][opposite] = false;
+  };
+  const goal = cells.length - 1;
+  openPassage(0, 1, 'right', 'left');
+  openPassage(0, size, 'bottom', 'top');
+  openPassage(1, size + 1, 'bottom', 'top');
+  openPassage(size, size + 1, 'right', 'left');
+  openPassage(goal, goal - 1, 'left', 'right');
+  openPassage(goal, goal - size, 'top', 'bottom');
+  openPassage(goal - 1, goal - size - 1, 'top', 'bottom');
+  openPassage(goal - size, goal - size - 1, 'left', 'right');
+
   return cells;
 }
 
@@ -1354,6 +1388,7 @@ function MazeGame() {
     <div className="maze-game">
       <div className="game-stats">
         <span>规格 <strong>{playedSize * playedSize} 格</strong></span>
+        <span>路线 <strong>多条</strong></span>
         <span>步数 <strong>{steps}</strong></span>
         <span>最短 <strong>{optimalSteps}</strong></span>
         <span>用时 <strong>{elapsed.toFixed(1)}s</strong></span>
@@ -1392,11 +1427,11 @@ function MazeGame() {
         <button type="button" className="maze-right" onClick={() => move('right')} aria-label="向右移动">→</button>
         <button type="button" className="maze-down" onClick={() => move('down')} aria-label="向下移动">↓</button>
       </div>
-      <p className="maze-instruction">使用方向键、WASD 或屏幕按钮，把小马带到右下角的旗帜。</p>
+      <p className="maze-instruction">迷宫中有多条路线和环路；使用方向键、WASD 或屏幕按钮，把小马带到右下角。</p>
       {!playing && (
         <div className="game-callout maze-callout">
           <strong>{finished ? '找到出口！' : '准备探路'}</strong>
-          <span>{finished ? `${steps} 步 · 最短路线 ${optimalSteps} 步 · 用时 ${elapsed.toFixed(1)} 秒` : `选择迷宫大小：${selectedSize * selectedSize} 格（${selectedSize}×${selectedSize}）`}</span>
+          <span>{finished ? `${steps} 步 · 最短路线 ${optimalSteps} 步 · 用时 ${elapsed.toFixed(1)} 秒` : `选择迷宫大小：${selectedSize * selectedSize} 格（${selectedSize}×${selectedSize}），每张都有多条路线`}</span>
           {finished && <StarRating value={rating} label="迷宫评分" />}
           <div className="difficulty-picker" role="group" aria-label="选择迷宫大小">
             {mazeSizes.map((option) => (
