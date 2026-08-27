@@ -1047,11 +1047,9 @@ function TimingGame() {
 
 type ShooterPhase = 'idle' | 'running' | 'finished';
 const shooterTargets = Array.from({ length: 9 }, (_, index) => index);
-const shooterRoundSeconds = 20;
 
 function ShooterGame() {
   const [phase, setPhase] = useState<ShooterPhase>('idle');
-  const [timeLeft, setTimeLeft] = useState(shooterRoundSeconds);
   const [hits, setHits] = useState(0);
   const [shots, setShots] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -1059,18 +1057,7 @@ function ShooterGame() {
   const [bestScore, setBestScore] = useState(0);
   const [remainingTargets, setRemainingTargets] = useState<Set<number>>(() => new Set(shooterTargets));
   const [muzzleFlash, setMuzzleFlash] = useState(false);
-  const deadline = useRef(0);
   const muzzleTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (phase !== 'running') return;
-    const timer = window.setInterval(() => {
-      const remaining = Math.max(0, deadline.current - performance.now());
-      setTimeLeft(Math.ceil(remaining / 1000));
-      if (remaining <= 0) setPhase('finished');
-    }, 80);
-    return () => window.clearInterval(timer);
-  }, [phase]);
 
   useEffect(() => () => {
     if (muzzleTimer.current !== null) window.clearTimeout(muzzleTimer.current);
@@ -1088,8 +1075,6 @@ function ShooterGame() {
     setCombo(0);
     setBestCombo(0);
     setRemainingTargets(new Set(shooterTargets));
-    setTimeLeft(shooterRoundSeconds);
-    deadline.current = performance.now() + shooterRoundSeconds * 1000;
     setPhase('running');
   }
 
@@ -1133,7 +1118,6 @@ function ShooterGame() {
   return (
     <div className="shooter-game">
       <div className="game-stats shooter-stats">
-        <span>时间 <strong>{timeLeft}s</strong></span>
         <span>剩余 <strong>{remainingTargets.size}</strong></span>
         <span>命中 <strong>{hits}</strong></span>
         <span>命中率 <strong>{accuracy}%</strong></span>
@@ -1160,7 +1144,7 @@ function ShooterGame() {
         {phase !== 'running' && (
           <div className="shooter-callout">
             <strong>{phase === 'finished' ? completed ? '全部命中！' : `击中 ${hits} / 9` : '圆环九靶'}</strong>
-            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '9 个靶子在同一个圆环中旋转；打中一个少一个，并且转得更快。'}</small>
+            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '不限时间：9 个靶子在同一个圆环中旋转；打中一个少一个，并且转得更快。'}</small>
             {phase === 'finished' && <StarRating value={rating} label="神枪手评分" />}
             <button type="button" onClick={(event) => { event.stopPropagation(); start(); }}>{phase === 'finished' ? '再来一局' : '开始射击'}</button>
           </div>
