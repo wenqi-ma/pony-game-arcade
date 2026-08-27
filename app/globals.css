@@ -565,7 +565,6 @@ footer {
   touch-action: manipulation;
 }
 .timing-stage::before { content: ""; position: absolute; width: 238px; height: 238px; border: 2px solid rgba(188,239,226,.28); border-radius: 50%; box-shadow: 0 0 0 28px rgba(188,239,226,.05), 0 0 0 57px rgba(188,239,226,.035); }
-.timing-stage.phase-running::before { border-color: #c9f44f; animation: timing-pulse 1s ease-in-out infinite; }
 .timing-stage.phase-result { background: #274b73; }
 .timing-stage:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 #41746b; }
 .timing-stage > span,
@@ -756,7 +755,6 @@ footer {
 @keyframes rhythm-crash { to { transform: translateX(-50%) rotate(72deg) translateY(13px); opacity: .65; } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-7px); } 70% { transform: translateX(7px); } }
 @keyframes correct-pop { 0% { transform: scale(.88); } 65% { transform: scale(1.07); } 100% { transform: scale(1); } }
-@keyframes timing-pulse { 0%, 100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.06); opacity: 1; } }
 @keyframes maze-bump { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-7px); } 70% { transform: translateX(5px); } }
 @keyframes maze-pony { from { transform: translateY(1px) rotate(-4deg); } to { transform: translateY(-2px) rotate(4deg); } }
 @keyframes shooter-wheel { from { transform: translate(-50%, -50%) rotate(0); } to { transform: translate(-50%, -50%) rotate(360deg); } }

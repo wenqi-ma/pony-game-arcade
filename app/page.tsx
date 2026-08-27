@@ -1039,7 +1039,7 @@ function TimingGame() {
         <strong>{display}</strong>
         <small>{phase === 'idle' ? '点击开始' : phase === 'running' ? elapsed < 1 ? '记住节奏，数字马上隐藏' : '凭感觉，再点击按停' : `${resultDirection} ${error?.toFixed(3)} 秒 · 点击再来`}</small>
       </button>
-      <p className="timing-instruction">开始后只显示第 1 秒，之后隐藏计时；感觉到达目标秒数时立即按停。</p>
+      <p className="timing-instruction">开始后只显示第 1 秒，之后隐藏计时，背景也不会提示节奏；感觉到达目标秒数时立即按停。</p>
       {phase === 'result' && <StarRating value={rating} label={`${playedTarget} 秒评分`} />}
     </div>
   );
