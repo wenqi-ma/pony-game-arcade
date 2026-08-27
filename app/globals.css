@@ -201,6 +201,7 @@ button { font: inherit; }
 .tone-yellow { background: #f3e269; }
 .tone-coral { background: #ff8176; }
 .tone-mint { background: #93e5d2; }
+.tone-steel { background: #a8c4dc; }
 
 .card-number { font-size: 12px; font-weight: 900; }
 .game-icon { justify-self: end; align-self: center; font: 700 68px/1 Georgia, serif; letter-spacing: -.08em; transition: transform .2s ease; }
@@ -314,7 +315,8 @@ footer {
 .order-game,
 .color-game,
 .maze-game,
-.timing-game {
+.timing-game,
+.shooter-game {
   position: relative;
   min-height: 520px;
   padding: 28px;
@@ -575,6 +577,47 @@ footer {
 .timing-instruction { margin: 18px auto 0; max-width: 480px; color: #355f58; text-align: center; font-size: 12px; font-weight: 800; line-height: 1.6; }
 .timing-game > .star-rating { margin: 14px auto 0; }
 
+.shooter-game { overflow: hidden; background: #a8c4dc; }
+.shooter-stats { flex-wrap: wrap; }
+.shooter-range {
+  --target-speed: 2.25s;
+  position: relative;
+  min-height: 412px;
+  overflow: hidden;
+  border: 3px solid #263849;
+  border-radius: 18px;
+  background: linear-gradient(rgba(255,255,255,.08), rgba(255,255,255,0)), repeating-linear-gradient(90deg, transparent 0 74px, rgba(255,255,255,.07) 75px 76px), linear-gradient(#54758d 0 76%, #314638 76% 100%);
+  cursor: crosshair;
+  box-shadow: inset 0 0 42px rgba(15,28,39,.28), 6px 6px 0 #263849;
+  touch-action: manipulation;
+}
+.shooter-range::before { content: "PONY SHOOTING RANGE"; position: absolute; top: 9px; left: 50%; color: rgba(255,255,255,.48); font-size: 10px; font-weight: 900; letter-spacing: .22em; transform: translateX(-50%); white-space: nowrap; }
+.shooter-grid { position: absolute; inset: 28px 26px 62px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px 14px; }
+.shooter-cell { display: grid; min-width: 0; place-items: center; border-bottom: 2px solid rgba(26,43,55,.27); }
+.shooter-target { position: relative; width: 78px; height: 78px; border: 0; background: transparent; padding: 0; cursor: crosshair; filter: drop-shadow(4px 6px 0 rgba(15,28,39,.28)); animation: shooter-drift var(--target-speed) linear infinite; touch-action: manipulation; }
+.shooter-cell:nth-child(even) .shooter-target { animation-direction: reverse; }
+.shooter-target:disabled { cursor: default; }
+.is-idle .shooter-target,
+.is-finished .shooter-target { animation-play-state: paused; filter: grayscale(.45) drop-shadow(4px 6px 0 rgba(15,28,39,.22)); }
+.shooter-target-disc { position: absolute; inset: 5px; display: grid; place-items: center; border: 3px solid #263849; border-radius: 50%; background: repeating-radial-gradient(circle, #e23e48 0 8px, #fff7e4 9px 16px, #273d4a 17px 22px, #fff7e4 23px 29px, #e23e48 30px 36px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.34); }
+.shooter-target-disc::before,
+.shooter-target-disc::after { content: ""; position: absolute; left: 50%; top: -8px; width: 3px; height: calc(100% + 16px); background: rgba(38,56,73,.7); transform: translateX(-50%); }
+.shooter-target-disc::after { transform: translateX(-50%) rotate(90deg); }
+.shooter-target-disc i { position: relative; z-index: 2; display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: #f2d34c; color: #263849; font-size: 10px; font-style: normal; font-weight: 1000; }
+.shooter-target::after { content: ""; position: absolute; left: 50%; bottom: -12px; width: 5px; height: 21px; border-radius: 4px; background: #263849; transform: translateX(-50%); }
+.shooter-target b { position: absolute; z-index: 4; left: 50%; top: 50%; font-size: 42px; line-height: 1; pointer-events: none; transform: translate(-50%, -50%); animation: shooter-hit .19s ease-out forwards; }
+.shooter-target.is-hit .shooter-target-disc { filter: brightness(1.3); transform: scale(.78); }
+.shooter-gun { position: absolute; z-index: 3; left: 50%; bottom: 7px; font-size: 48px; line-height: 1; pointer-events: none; filter: drop-shadow(3px 4px 0 rgba(15,28,39,.28)); transform: translateX(-50%) rotate(-12deg); transform-origin: center bottom; }
+.shooter-gun.is-firing { animation: shooter-recoil .09s ease-out; }
+.shooter-callout { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(24,38,49,.82); color: white; padding: 28px; text-align: center; backdrop-filter: blur(5px); }
+.shooter-callout > strong { font: 400 clamp(39px, 8vw, 58px)/1 Georgia, "Songti SC", serif; }
+.shooter-callout > small { max-width: 410px; margin-top: 13px; color: rgba(255,255,255,.78); font-size: 14px; line-height: 1.55; }
+.shooter-callout > button { margin-top: 22px; border: 0; border-radius: 999px; background: #f2d34c; color: #263849; padding: 12px 25px; cursor: pointer; font-weight: 900; box-shadow: 4px 4px 0 #172631; }
+.shooter-callout > button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #172631; }
+.shooter-callout .star-rating { margin: 16px 0 0; background: rgba(255,255,255,.12); }
+.shooter-callout .star-rating > span { color: rgba(255,255,255,.75); }
+.shooter-instruction { margin: 17px 0 0; color: #314f63; text-align: center; font-size: 13px; font-weight: 800; }
+
 .maze-game { overflow: hidden; background: #ffb0a8; }
 .maze-frame { display: grid; place-items: center; }
 .maze-board {
@@ -718,6 +761,9 @@ footer {
 @keyframes timing-pulse { 0%, 100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.06); opacity: 1; } }
 @keyframes maze-bump { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-7px); } 70% { transform: translateX(5px); } }
 @keyframes maze-pony { from { transform: translateY(1px) rotate(-4deg); } to { transform: translateY(-2px) rotate(4deg); } }
+@keyframes shooter-drift { 0% { transform: translate(-12px, -8px) rotate(0); } 25% { transform: translate(13px, -3px) rotate(90deg); } 50% { transform: translate(10px, 10px) rotate(180deg); } 75% { transform: translate(-10px, 7px) rotate(270deg); } 100% { transform: translate(-12px, -8px) rotate(360deg); } }
+@keyframes shooter-hit { 0% { opacity: .1; transform: translate(-50%, -50%) scale(.35); } 55% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); } }
+@keyframes shooter-recoil { 50% { transform: translateX(-50%) translateY(7px) rotate(-20deg); } }
 
 @media (max-width: 850px) {
   .hero { min-height: 600px; grid-template-columns: 1fr; padding: 80px 0; }
@@ -746,7 +792,8 @@ footer {
   .order-game,
   .color-game,
   .maze-game,
-  .timing-game { min-height: calc(100vh - 85px); padding: 18px; }
+  .timing-game,
+  .shooter-game { min-height: calc(100vh - 85px); padding: 18px; }
   .reaction-pad { min-height: calc(100vh - 190px); }
   .reaction-meta { flex-direction: column; gap: 3px; }
   .memory-board,
@@ -763,6 +810,9 @@ footer {
   .color-choices.choices-6 { grid-template-columns: repeat(3, 1fr); }
   .color-choices.choices-8 { grid-template-columns: repeat(4, 1fr); }
   .color-word { min-height: 260px; }
+  .shooter-grid { inset: 29px 8px 64px; gap: 6px; }
+  .shooter-target { width: 67px; height: 67px; }
+  .shooter-range { min-height: calc(100vh - 205px); }
   footer { flex-direction: column; }
 }
 

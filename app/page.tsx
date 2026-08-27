@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { puzzles, type Puzzle } from './puzzles';
 
-type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'maze' | 'timing';
+type GameId = 'whack' | 'twentyfour' | 'reaction' | 'memory' | 'order' | 'color' | 'maze' | 'timing' | 'shooter';
 
 const games: Array<{
   id: GameId;
@@ -21,6 +21,7 @@ const games: Array<{
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
   { id: 'maze', icon: '🧩', title: '迷宫探险', description: '找到正确路线，少走弯路冲向终点。', tag: '空间', color: 'coral' },
   { id: 'timing', icon: '⏱', title: '时间感应', description: '选择 3—7 秒，凭感觉在指定时刻按停。', tag: '感觉', color: 'mint' },
+  { id: 'shooter', icon: '🎯', title: '神枪手', description: '瞄准 9 个旋转靶，每命中一个就会更快。', tag: '瞄准', color: 'steel' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -1044,6 +1045,139 @@ function TimingGame() {
   );
 }
 
+type ShooterPhase = 'idle' | 'running' | 'finished';
+const shooterTargets = Array.from({ length: 9 }, (_, index) => index);
+const shooterRoundSeconds = 20;
+
+function ShooterGame() {
+  const [phase, setPhase] = useState<ShooterPhase>('idle');
+  const [timeLeft, setTimeLeft] = useState(shooterRoundSeconds);
+  const [hits, setHits] = useState(0);
+  const [shots, setShots] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [bestCombo, setBestCombo] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
+  const [hitTargets, setHitTargets] = useState<Set<number>>(() => new Set());
+  const [muzzleFlash, setMuzzleFlash] = useState(false);
+  const deadline = useRef(0);
+  const hitTimers = useRef<number[]>([]);
+  const muzzleTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (phase !== 'running') return;
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, deadline.current - performance.now());
+      setTimeLeft(Math.ceil(remaining / 1000));
+      if (remaining <= 0) setPhase('finished');
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [phase]);
+
+  useEffect(() => () => {
+    hitTimers.current.forEach((timer) => window.clearTimeout(timer));
+    if (muzzleTimer.current !== null) window.clearTimeout(muzzleTimer.current);
+  }, []);
+
+  function flashGun() {
+    setMuzzleFlash(true);
+    if (muzzleTimer.current !== null) window.clearTimeout(muzzleTimer.current);
+    muzzleTimer.current = window.setTimeout(() => setMuzzleFlash(false), 90);
+  }
+
+  function start() {
+    hitTimers.current.forEach((timer) => window.clearTimeout(timer));
+    hitTimers.current = [];
+    setHits(0);
+    setShots(0);
+    setCombo(0);
+    setBestCombo(0);
+    setHitTargets(new Set());
+    setTimeLeft(shooterRoundSeconds);
+    deadline.current = performance.now() + shooterRoundSeconds * 1000;
+    setPhase('running');
+  }
+
+  function hitTarget(target: number) {
+    if (phase !== 'running') return;
+    flashGun();
+    setShots((value) => value + 1);
+    setHits((value) => {
+      const next = value + 1;
+      setBestScore((best) => Math.max(best, next));
+      return next;
+    });
+    setCombo((value) => {
+      const next = value + 1;
+      setBestCombo((best) => Math.max(best, next));
+      return next;
+    });
+    setHitTargets((current) => new Set(current).add(target));
+    const timer = window.setTimeout(() => {
+      setHitTargets((current) => {
+        const next = new Set(current);
+        next.delete(target);
+        return next;
+      });
+    }, 190);
+    hitTimers.current.push(timer);
+  }
+
+  function miss() {
+    if (phase !== 'running') return;
+    flashGun();
+    setShots((value) => value + 1);
+    setCombo(0);
+  }
+
+  const accuracy = shots === 0 ? 0 : Math.round((hits / shots) * 100);
+  const targetDuration = Math.max(.34, 2.25 - hits * .065);
+  const speedMultiplier = 2.25 / targetDuration;
+  const rating = hits >= 34 ? 5 : hits >= 27 ? 4 : hits >= 20 ? 3 : hits >= 12 ? 2 : 1;
+  const rangeStyle = { '--target-speed': `${targetDuration}s` } as CSSProperties;
+
+  return (
+    <div className="shooter-game">
+      <div className="game-stats shooter-stats">
+        <span>时间 <strong>{timeLeft}s</strong></span>
+        <span>命中 <strong>{hits}</strong></span>
+        <span>射击 <strong>{shots}</strong></span>
+        <span>命中率 <strong>{accuracy}%</strong></span>
+        <span>连击 <strong>{combo}</strong></span>
+        <span>速度 <strong>×{speedMultiplier.toFixed(1)}</strong></span>
+      </div>
+      <div className={`shooter-range is-${phase}`} style={rangeStyle} onClick={miss} role="group" aria-label="九个旋转靶射击区">
+        <div className="shooter-grid">
+          {shooterTargets.map((target) => (
+            <div className="shooter-cell" key={target}>
+              <button
+                type="button"
+                className={`shooter-target ${hitTargets.has(target) ? 'is-hit' : ''}`}
+                style={{ animationDelay: `${target * -.17}s` }}
+                disabled={phase !== 'running'}
+                onClick={(event) => { event.stopPropagation(); hitTarget(target); }}
+                aria-label={`射击第 ${target + 1} 个靶子`}
+              >
+                <span className="shooter-target-disc"><i>{target + 1}</i></span>
+                {hitTargets.has(target) && <b aria-hidden="true">💥</b>}
+              </button>
+            </div>
+          ))}
+        </div>
+        <span className={`shooter-gun ${muzzleFlash ? 'is-firing' : ''}`} aria-hidden="true">🔫</span>
+        {phase !== 'running' && (
+          <div className="shooter-callout">
+            <strong>{phase === 'finished' ? `${hits} 次命中` : '九靶连射'}</strong>
+            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}` : '20 秒内瞄准九个旋转靶；每命中一个，所有靶子都会加速。'}</small>
+            {phase === 'finished' && <StarRating value={rating} label="神枪手评分" />}
+            <button type="button" onClick={(event) => { event.stopPropagation(); start(); }}>{phase === 'finished' ? '再来一局' : '开始射击'}</button>
+          </div>
+        )}
+      </div>
+      <p className="shooter-instruction">点击靶子开枪，点击空白算脱靶；连续命中可以保持连击。</p>
+    </div>
+  );
+}
+
 type MazeSize = 11 | 13 | 19;
 type MazeWall = 'top' | 'right' | 'bottom' | 'left';
 type MazeDirectionKey = 'up' | 'right' | 'down' | 'left';
@@ -1520,7 +1654,8 @@ function ActiveGame({ id }: { id: GameId }) {
   if (id === 'order') return <OrderGame />;
   if (id === 'color') return <ColorGame />;
   if (id === 'maze') return <MazeGame />;
-  return <TimingGame />;
+  if (id === 'timing') return <TimingGame />;
+  return <ShooterGame />;
 }
 
 export default function Home() {
@@ -1549,7 +1684,7 @@ export default function Home() {
         <div className="hero-copy">
           <span className="eyebrow">MINI GAME CLUB</span>
           <h1>今天想挑战<br /><em>哪一种能力？</em></h1>
-          <p>八款轻量小游戏，练手速、算力、记忆、专注、空间、时间感与反应。无需登录，点开就玩。</p>
+          <p>九款轻量小游戏，练手速、算力、记忆、专注、空间、时间感、反应与瞄准。无需登录，点开就玩。</p>
         </div>
         <div className="hero-orbit" aria-hidden="true">
           <span className="orbit-center">PLAY</span><span className="orbit-dot dot-one">24</span><span className="orbit-dot dot-two">🏁</span><span className="orbit-dot dot-three">🐹</span>
@@ -1558,7 +1693,7 @@ export default function Home() {
 
       <section className="game-section" aria-labelledby="game-list-title">
         <div className="section-heading">
-          <div><span className="eyebrow">8 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
+          <div><span className="eyebrow">9 GAMES</span><h2 id="game-list-title">选择一个游戏</h2></div>
           <p>每局不到一分钟，随时刷新你的最好成绩。</p>
         </div>
         <div className="game-grid">
