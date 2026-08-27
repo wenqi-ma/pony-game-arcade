@@ -1057,10 +1057,9 @@ function ShooterGame() {
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
   const [bestScore, setBestScore] = useState(0);
-  const [hitTargets, setHitTargets] = useState<Set<number>>(() => new Set());
+  const [remainingTargets, setRemainingTargets] = useState<Set<number>>(() => new Set(shooterTargets));
   const [muzzleFlash, setMuzzleFlash] = useState(false);
   const deadline = useRef(0);
-  const hitTimers = useRef<number[]>([]);
   const muzzleTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -1074,7 +1073,6 @@ function ShooterGame() {
   }, [phase]);
 
   useEffect(() => () => {
-    hitTimers.current.forEach((timer) => window.clearTimeout(timer));
     if (muzzleTimer.current !== null) window.clearTimeout(muzzleTimer.current);
   }, []);
 
@@ -1085,20 +1083,19 @@ function ShooterGame() {
   }
 
   function start() {
-    hitTimers.current.forEach((timer) => window.clearTimeout(timer));
-    hitTimers.current = [];
     setHits(0);
     setShots(0);
     setCombo(0);
     setBestCombo(0);
-    setHitTargets(new Set());
+    setRemainingTargets(new Set(shooterTargets));
     setTimeLeft(shooterRoundSeconds);
     deadline.current = performance.now() + shooterRoundSeconds * 1000;
     setPhase('running');
   }
 
   function hitTarget(target: number) {
-    if (phase !== 'running') return;
+    if (phase !== 'running' || !remainingTargets.has(target)) return;
+    const isLastTarget = remainingTargets.size === 1;
     flashGun();
     setShots((value) => value + 1);
     setHits((value) => {
@@ -1111,15 +1108,12 @@ function ShooterGame() {
       setBestCombo((best) => Math.max(best, next));
       return next;
     });
-    setHitTargets((current) => new Set(current).add(target));
-    const timer = window.setTimeout(() => {
-      setHitTargets((current) => {
-        const next = new Set(current);
-        next.delete(target);
-        return next;
-      });
-    }, 190);
-    hitTimers.current.push(timer);
+    setRemainingTargets((current) => {
+      const next = new Set(current);
+      next.delete(target);
+      return next;
+    });
+    if (isLastTarget) setPhase('finished');
   }
 
   function miss() {
@@ -1130,35 +1124,34 @@ function ShooterGame() {
   }
 
   const accuracy = shots === 0 ? 0 : Math.round((hits / shots) * 100);
-  const targetDuration = Math.max(.34, 2.25 - hits * .065);
-  const speedMultiplier = 2.25 / targetDuration;
-  const rating = hits >= 34 ? 5 : hits >= 27 ? 4 : hits >= 20 ? 3 : hits >= 12 ? 2 : 1;
+  const targetDuration = Math.max(.82, 4 - hits * .35);
+  const speedMultiplier = 4 / targetDuration;
+  const completed = phase === 'finished' && remainingTargets.size === 0;
+  const rating = completed ? accuracy >= 90 ? 5 : accuracy >= 70 ? 4 : 3 : hits >= 7 ? 3 : hits >= 4 ? 2 : 1;
   const rangeStyle = { '--target-speed': `${targetDuration}s` } as CSSProperties;
 
   return (
     <div className="shooter-game">
       <div className="game-stats shooter-stats">
         <span>时间 <strong>{timeLeft}s</strong></span>
+        <span>剩余 <strong>{remainingTargets.size}</strong></span>
         <span>命中 <strong>{hits}</strong></span>
-        <span>射击 <strong>{shots}</strong></span>
         <span>命中率 <strong>{accuracy}%</strong></span>
         <span>连击 <strong>{combo}</strong></span>
         <span>速度 <strong>×{speedMultiplier.toFixed(1)}</strong></span>
       </div>
       <div className={`shooter-range is-${phase}`} style={rangeStyle} onClick={miss} role="group" aria-label="九个旋转靶射击区">
         <div className="shooter-grid">
-          {shooterTargets.map((target) => (
-            <div className="shooter-cell" key={target}>
+          {shooterTargets.filter((target) => remainingTargets.has(target)).map((target) => (
+            <div className="shooter-cell" style={{ '--target-angle': `${target * 40}deg` } as CSSProperties} key={target}>
               <button
                 type="button"
-                className={`shooter-target ${hitTargets.has(target) ? 'is-hit' : ''}`}
-                style={{ animationDelay: `${target * -.17}s` }}
+                className="shooter-target"
                 disabled={phase !== 'running'}
                 onClick={(event) => { event.stopPropagation(); hitTarget(target); }}
                 aria-label={`射击第 ${target + 1} 个靶子`}
               >
                 <span className="shooter-target-disc"><i>{target + 1}</i></span>
-                {hitTargets.has(target) && <b aria-hidden="true">💥</b>}
               </button>
             </div>
           ))}
@@ -1166,14 +1159,14 @@ function ShooterGame() {
         <span className={`shooter-gun ${muzzleFlash ? 'is-firing' : ''}`} aria-hidden="true">🔫</span>
         {phase !== 'running' && (
           <div className="shooter-callout">
-            <strong>{phase === 'finished' ? `${hits} 次命中` : '九靶连射'}</strong>
-            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}` : '20 秒内瞄准九个旋转靶；每命中一个，所有靶子都会加速。'}</small>
+            <strong>{phase === 'finished' ? completed ? '全部命中！' : `击中 ${hits} / 9` : '圆环九靶'}</strong>
+            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '9 个靶子在同一个圆环中旋转；打中一个少一个，并且转得更快。'}</small>
             {phase === 'finished' && <StarRating value={rating} label="神枪手评分" />}
             <button type="button" onClick={(event) => { event.stopPropagation(); start(); }}>{phase === 'finished' ? '再来一局' : '开始射击'}</button>
           </div>
         )}
       </div>
-      <p className="shooter-instruction">点击靶子开枪，点击空白算脱靶；连续命中可以保持连击。</p>
+      <p className="shooter-instruction">点击靶子开枪，击中的靶子会消失；点击空白算脱靶。</p>
     </div>
   );
 }
