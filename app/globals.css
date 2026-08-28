@@ -597,6 +597,8 @@ footer {
 .shooter-grid::before { content: ""; position: absolute; inset: 41%; border: 2px solid rgba(242,211,76,.7); border-radius: 50%; background: rgba(38,56,73,.42); box-shadow: 0 0 0 12px rgba(242,211,76,.06); }
 .shooter-cell { --target-angle: 0deg; position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--target-angle)) translateY(calc(var(--orbit-radius) * -1)); }
 .shooter-target { position: absolute; left: -36px; top: -36px; display: block; width: 72px; height: 72px; filter: drop-shadow(4px 6px 0 rgba(15,28,39,.28)); pointer-events: none; }
+.targets-12 .shooter-target { left: -30px; top: -30px; width: 60px; height: 60px; }
+.targets-15 .shooter-target { left: -24px; top: -24px; width: 48px; height: 48px; }
 .is-idle .shooter-grid,
 .is-finished .shooter-grid { animation-play-state: paused; filter: grayscale(.45); }
 .shooter-target-disc { position: absolute; inset: 5px; display: grid; place-items: center; border: 3px solid #263849; border-radius: 50%; background: repeating-radial-gradient(circle, #e23e48 0 8px, #fff7e4 9px 16px, #273d4a 17px 22px, #fff7e4 23px 29px, #e23e48 30px 36px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.34); }
@@ -619,6 +621,9 @@ footer {
 .shooter-callout > button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #172631; }
 .shooter-callout .star-rating { margin: 16px 0 0; background: rgba(255,255,255,.12); }
 .shooter-callout .star-rating > span { color: rgba(255,255,255,.75); }
+.shooter-count-picker { margin: 17px 0 0; background: rgba(255,255,255,.12); }
+.shooter-count-picker button { color: white; }
+.shooter-count-picker button[aria-pressed="true"] { background: #f2d34c; color: #263849; }
 .shooter-instruction { margin: 17px 0 0; color: #314f63; text-align: center; font-size: 13px; font-weight: 800; }
 
 .maze-game { overflow: hidden; background: #ffb0a8; }
@@ -814,6 +819,8 @@ footer {
   .shooter-range { --orbit-radius: 96px; min-height: calc(100vh - 205px); }
   .shooter-grid { width: min(270px, calc(100% - 24px)); }
   .shooter-target { left: -30px; top: -30px; width: 60px; height: 60px; }
+  .shooter-range.targets-12 .shooter-target { left: -26px; top: -26px; width: 52px; height: 52px; }
+  .shooter-range.targets-15 .shooter-target { left: -21px; top: -21px; width: 42px; height: 42px; }
   footer { flex-direction: column; }
 }
 

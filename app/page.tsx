@@ -21,7 +21,7 @@ const games: Array<{
   { id: 'color', icon: '🌈', title: '颜色迷阵', description: '别读文字，只判断它真正的颜色。', tag: '脑力', color: 'yellow' },
   { id: 'maze', icon: '🧩', title: '迷宫探险', description: '多条路线自由选择，少走弯路冲向终点。', tag: '空间', color: 'coral' },
   { id: 'timing', icon: '⏱', title: '时间感应', description: '选择 3—7 秒，凭感觉在指定时刻按停。', tag: '感觉', color: 'mint' },
-  { id: 'shooter', icon: '🎯', title: '神枪手', description: '守住固定准星，等旋转靶经过时开枪。', tag: '瞄准', color: 'steel' },
+  { id: 'shooter', icon: '🎯', title: '神枪手', description: '可选 9、12、15 靶，守住固定准星开枪。', tag: '瞄准', color: 'steel' },
 ];
 
 function shuffle<T>(items: T[]) {
@@ -1046,16 +1046,20 @@ function TimingGame() {
 }
 
 type ShooterPhase = 'idle' | 'running' | 'finished';
-const shooterTargets = Array.from({ length: 9 }, (_, index) => index);
+type ShooterTargetCount = 9 | 12 | 15;
+const shooterTargetCounts: ShooterTargetCount[] = [9, 12, 15];
+const shooterTargetIds = Array.from({ length: 15 }, (_, index) => index);
 
 function ShooterGame() {
   const [phase, setPhase] = useState<ShooterPhase>('idle');
+  const [selectedTargetCount, setSelectedTargetCount] = useState<ShooterTargetCount>(9);
+  const [playedTargetCount, setPlayedTargetCount] = useState<ShooterTargetCount>(9);
   const [hits, setHits] = useState(0);
   const [shots, setShots] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
-  const [remainingTargets, setRemainingTargets] = useState<Set<number>>(() => new Set(shooterTargets));
+  const [bestByTargetCount, setBestByTargetCount] = useState<Record<ShooterTargetCount, number>>({ 9: 0, 12: 0, 15: 0 });
+  const [remainingTargets, setRemainingTargets] = useState<Set<number>>(() => new Set(shooterTargetIds.slice(0, 9)));
   const [muzzleFlash, setMuzzleFlash] = useState(false);
   const muzzleTimer = useRef<number | null>(null);
   const rangeRef = useRef<HTMLDivElement | null>(null);
@@ -1072,13 +1076,26 @@ function ShooterGame() {
   }
 
   function start() {
+    setPlayedTargetCount(selectedTargetCount);
     setHits(0);
     setShots(0);
     setCombo(0);
     setBestCombo(0);
-    setRemainingTargets(new Set(shooterTargets));
+    setRemainingTargets(new Set(shooterTargetIds.slice(0, selectedTargetCount)));
     setPhase('running');
     window.requestAnimationFrame(() => rangeRef.current?.focus());
+  }
+
+  function selectTargetCount(targetCount: ShooterTargetCount) {
+    if (phase === 'running') return;
+    setSelectedTargetCount(targetCount);
+    setPlayedTargetCount(targetCount);
+    setHits(0);
+    setShots(0);
+    setCombo(0);
+    setBestCombo(0);
+    setRemainingTargets(new Set(shooterTargetIds.slice(0, targetCount)));
+    setPhase('idle');
   }
 
   function hitTarget(target: number) {
@@ -1088,7 +1105,10 @@ function ShooterGame() {
     setShots((value) => value + 1);
     setHits((value) => {
       const next = value + 1;
-      setBestScore((best) => Math.max(best, next));
+      setBestByTargetCount((current) => ({
+        ...current,
+        [playedTargetCount]: Math.max(current[playedTargetCount], next),
+      }));
       return next;
     });
     setCombo((value) => {
@@ -1145,6 +1165,7 @@ function ShooterGame() {
   return (
     <div className="shooter-game">
       <div className="game-stats shooter-stats">
+        <span>靶数 <strong>{playedTargetCount}</strong></span>
         <span>剩余 <strong>{remainingTargets.size}</strong></span>
         <span>命中 <strong>{hits}</strong></span>
         <span>命中率 <strong>{accuracy}%</strong></span>
@@ -1153,7 +1174,7 @@ function ShooterGame() {
       </div>
       <div
         ref={rangeRef}
-        className={`shooter-range is-${phase}`}
+        className={`shooter-range is-${phase} targets-${playedTargetCount}`}
         style={rangeStyle}
         onClick={shootAtSight}
         onKeyDown={(event) => {
@@ -1167,8 +1188,8 @@ function ShooterGame() {
         aria-label="固定准星射击区，点击或按空格开枪"
       >
         <div className="shooter-grid">
-          {shooterTargets.filter((target) => remainingTargets.has(target)).map((target) => (
-            <div className="shooter-cell" style={{ '--target-angle': `${target * 40}deg` } as CSSProperties} key={target}>
+          {shooterTargetIds.slice(0, playedTargetCount).filter((target) => remainingTargets.has(target)).map((target) => (
+            <div className="shooter-cell" style={{ '--target-angle': `${target * (360 / playedTargetCount)}deg` } as CSSProperties} key={target}>
               <span
                 className="shooter-target"
                 data-shooter-target={target}
@@ -1183,9 +1204,14 @@ function ShooterGame() {
         <span className={`shooter-gun ${muzzleFlash ? 'is-firing' : ''}`} aria-hidden="true">🔫</span>
         {phase !== 'running' && (
           <div className="shooter-callout">
-            <strong>{phase === 'finished' ? completed ? '全部命中！' : `击中 ${hits} / 9` : '圆环九靶'}</strong>
-            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 最佳 ${bestScore}/9` : '准星固定不动；等旋转靶经过准星时点击场地开枪，打中一个少一个。'}</small>
+            <strong>{phase === 'finished' ? completed ? `全部 ${playedTargetCount} 靶命中！` : `击中 ${hits} / ${playedTargetCount}` : `圆环 ${selectedTargetCount} 靶`}</strong>
+            <small>{phase === 'finished' ? `命中率 ${accuracy}% · 最高连击 ${bestCombo} · 本模式最佳 ${bestByTargetCount[playedTargetCount]}/${playedTargetCount}` : '准星固定不动；等旋转靶经过准星时点击场地开枪，打中一个少一个。'}</small>
             {phase === 'finished' && <StarRating value={rating} label="神枪手评分" />}
+            <div className="difficulty-picker shooter-count-picker" role="group" aria-label="选择神枪手靶子数量">
+              {shooterTargetCounts.map((targetCount) => (
+                <button type="button" key={targetCount} aria-pressed={selectedTargetCount === targetCount} onClick={(event) => { event.stopPropagation(); selectTargetCount(targetCount); }}>{targetCount} 靶</button>
+              ))}
+            </div>
             <button type="button" onClick={(event) => { event.stopPropagation(); start(); }}>{phase === 'finished' ? '再来一局' : '开始射击'}</button>
           </div>
         )}
