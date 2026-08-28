@@ -1136,8 +1136,8 @@ function ShooterGame() {
   }
 
   const accuracy = shots === 0 ? 0 : Math.round((hits / shots) * 100);
-  const targetDuration = Math.max(.82, 4 - hits * .35);
-  const speedMultiplier = 4 / targetDuration;
+  const targetDuration = Math.max(.8, 3 - hits * .28);
+  const speedMultiplier = 3 / targetDuration;
   const completed = phase === 'finished' && remainingTargets.size === 0;
   const rating = completed ? accuracy >= 90 ? 5 : accuracy >= 70 ? 4 : 3 : hits >= 7 ? 3 : hits >= 4 ? 2 : 1;
   const rangeStyle = { '--target-speed': `${targetDuration}s` } as CSSProperties;

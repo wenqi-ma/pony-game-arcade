@@ -579,7 +579,7 @@ footer {
 .shooter-game { overflow: hidden; background: #a8c4dc; }
 .shooter-stats { flex-wrap: wrap; }
 .shooter-range {
-  --target-speed: 2.25s;
+  --target-speed: 3s;
   --orbit-radius: 126px;
   position: relative;
   min-height: 412px;
